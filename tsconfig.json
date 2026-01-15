@@ -4,7 +4,7 @@
     "module": "commonjs",
     "lib": ["ES2022"],
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": "./",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -16,11 +16,11 @@
     "emitDecoratorMetadata": true,
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
-    "baseUrl": "./src",
+    "baseUrl": "./",
     "paths": {
       "@/*": ["*"]
     }
   },
-  "include": ["src/**/*"],
+  "include": ["apps/**/*"],
   "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"]
 }

@@ -1,15 +1,14 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { ConfigModule } from '@nestjs/config';
-import { Logger } from 'pino';
-import { HealthModule } from './modules/health/health.module';
+import { AppModule } from './app.module';
+import pino from 'pino';
 
 async function bootstrap() {
-  const logger = new Logger({
+  const logger = pino({
     level: process.env.LOG_LEVEL || 'info',
     formatters: {
-      log: (log) => ({
+      log: (log: any) => ({
         msg: log.msg,
         level: log.level,
         timestamp: log.time,
@@ -21,16 +20,18 @@ async function bootstrap() {
     },
   });
 
-  const app = await NestFactory.create(
-    new DocumentBuilder()
-      .setTitle('Logistics Ops Lab API')
-      .setVersion('1.0.0')
-      .setDescription('Logistics Operations Platform - API Service')
-      .build(),
-  );
+  const app = await NestFactory.create(AppModule);
 
   app.useGlobalPipes(new ValidationPipe());
-  app.useLogger(logger);
+
+  const config = new DocumentBuilder()
+    .setTitle('Logistics Ops Lab API')
+    .setVersion('1.0.0')
+    .setDescription('Logistics Operations Platform - API Service')
+    .build();
+
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api', app, document);
 
   await app.init();
   

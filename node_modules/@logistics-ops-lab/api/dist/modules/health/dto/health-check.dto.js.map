@@ -1,0 +1,1 @@
+{"version":3,"file":"health-check.dto.js","sourceRoot":"","sources":["../../../../src/modules/health/dto/health-check.dto.ts"],"names":[],"mappings":";;;AAAA,MAAa,cAAc;IACzB,MAAM,GAAyC,SAAS,CAAC;IACzD,SAAS,GAAW,IAAI,IAAI,EAAE,CAAC,WAAW,EAAE,CAAC;IAC7C,OAAO,GAAW,KAAK,CAAC;IACxB,OAAO,CAAuB;CAC/B;AALD,wCAKC"}

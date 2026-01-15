@@ -1,27 +1,16 @@
-FROM node:20-alpine AS base
+FROM node:20-alpine
 
 WORKDIR /usr/src/app
 
 COPY package*.json ./
-COPY pnpm-lock.yaml ./
+COPY apps/worker/package.json ./apps/worker/
 
-RUN npm install -g pnpm
-RUN pnpm install --frozen-lockfile
+RUN npm install
 
 COPY . .
 
-RUN npm run build
-
-FROM node:20-alpine AS production
-
-WORKDIR /usr/src/app
-
-COPY --from=base /usr/src/app/dist ./dist
-COPY --from=base /usr/src/app/node_modules ./node_modules
-COPY --from=base /usr/src/app/package*.json ./
+RUN npm install
 
 EXPOSE 3001
 
-USER node
-
-CMD ["node", "dist/main.js"]
+CMD ["npx", "ts-node", "apps/worker/src/main.ts"]

@@ -1,13 +1,14 @@
 import { NestFactory } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { Logger } from 'pino';
-import { HealthModule } from './modules/health/health.module';
+import pino from 'pino';
+import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const logger = new Logger({
+  const logger = pino({
     level: process.env.LOG_LEVEL || 'info',
     formatters: {
-      log: (log) => ({
+      log: (log: any) => ({
         msg: log.msg,
         level: log.level,
         timestamp: log.time,
@@ -19,9 +20,7 @@ async function bootstrap() {
     },
   });
 
-  const app = await NestFactory.create();
-
-  app.useLogger(logger);
+  const app = await NestFactory.create(AppModule);
 
   await app.init();
   
