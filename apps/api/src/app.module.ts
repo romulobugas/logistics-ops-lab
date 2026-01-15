@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { HealthModule } from './modules/health/health.module';
+import { StockModule } from './modules/stock/stock.module';
 
 @Module({
   imports: [
@@ -9,6 +10,7 @@ import { HealthModule } from './modules/health/health.module';
       envFilePath: '.env',
     }),
     HealthModule,
+    StockModule,
   ],
 })
 export class AppModule {}
