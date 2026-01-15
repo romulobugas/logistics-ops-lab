@@ -66,7 +66,7 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] T005 [P] Implement authentication/authorization framework
 - [ ] T006 [P] Setup API routing and middleware structure
 - [ ] T007 Create base models/entities that all stories depend on
-- [ ] T008 Configure error handling and logging infrastructure
+- [ ] T008 Configure error handling, structured logging, and tracing infrastructure (requestId/eventId per constitution)
 - [ ] T009 Setup environment configuration management
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
@@ -83,17 +83,17 @@ Examples of foundational tasks (adjust based on your project):
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T010 [P] [US1] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T011 [P] [US1] Integration test for [user journey] in tests/integration/test_[name].py
+- [ ] T010 [P] [US1] Contract test for [endpoint] in tests/contract/[name].spec.ts
+- [ ] T011 [P] [US1] Integration test for [user journey] in tests/integration/[name].spec.ts
 
 ### Implementation for User Story 1
 
-- [ ] T012 [P] [US1] Create [Entity1] model in src/models/[entity1].py
-- [ ] T013 [P] [US1] Create [Entity2] model in src/models/[entity2].py
-- [ ] T014 [US1] Implement [Service] in src/services/[service].py (depends on T012, T013)
-- [ ] T015 [US1] Implement [endpoint/feature] in src/[location]/[file].py
+- [ ] T012 [P] [US1] Create [Entity1] model in src/modules/[feature]/dto/[entity1].dto.ts
+- [ ] T013 [P] [US1] Create [Entity2] model in src/modules/[feature]/dto/[entity2].dto.ts
+- [ ] T014 [US1] Implement [Service] in src/modules/[feature]/services/[service].ts (depends on T012, T013)
+- [ ] T015 [US1] Implement [endpoint/feature] in src/modules/[feature]/controllers/[controller].ts
 - [ ] T016 [US1] Add validation and error handling
-- [ ] T017 [US1] Add logging for user story 1 operations
+- [ ] T017 [US1] Add structured logging and tracing for user story 1 operations (observability compliance)
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -107,14 +107,14 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Tests for User Story 2 (OPTIONAL - only if tests requested) ⚠️
 
-- [ ] T018 [P] [US2] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T019 [P] [US2] Integration test for [user journey] in tests/integration/test_[name].py
+- [ ] T018 [P] [US2] Contract test for [endpoint] in tests/contract/[name].spec.ts
+- [ ] T019 [P] [US2] Integration test for [user journey] in tests/integration/[name].spec.ts
 
 ### Implementation for User Story 2
 
-- [ ] T020 [P] [US2] Create [Entity] model in src/models/[entity].py
-- [ ] T021 [US2] Implement [Service] in src/services/[service].py
-- [ ] T022 [US2] Implement [endpoint/feature] in src/[location]/[file].py
+- [ ] T020 [P] [US2] Create [Entity] model in src/modules/[feature]/dto/[entity].dto.ts
+- [ ] T021 [US2] Implement [Service] in src/modules/[feature]/services/[service].ts
+- [ ] T022 [US2] Implement [endpoint/feature] in src/modules/[feature]/controllers/[controller].ts
 - [ ] T023 [US2] Integrate with User Story 1 components (if needed)
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
@@ -129,14 +129,14 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Tests for User Story 3 (OPTIONAL - only if tests requested) ⚠️
 
-- [ ] T024 [P] [US3] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T025 [P] [US3] Integration test for [user journey] in tests/integration/test_[name].py
+- [ ] T024 [P] [US3] Contract test for [endpoint] in tests/contract/[name].spec.ts
+- [ ] T025 [P] [US3] Integration test for [user journey] in tests/integration/[name].spec.ts
 
 ### Implementation for User Story 3
 
-- [ ] T026 [P] [US3] Create [Entity] model in src/models/[entity].py
-- [ ] T027 [US3] Implement [Service] in src/services/[service].py
-- [ ] T028 [US3] Implement [endpoint/feature] in src/[location]/[file].py
+- [ ] T026 [P] [US3] Create [Entity] model in src/modules/[feature]/dto/[entity].dto.ts
+- [ ] T027 [US3] Implement [Service] in src/modules/[feature]/services/[service].ts
+- [ ] T028 [US3] Implement [endpoint/feature] in src/modules/[feature]/controllers/[controller].ts
 
 **Checkpoint**: All user stories should now be independently functional
 
@@ -153,7 +153,7 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX [P] Documentation updates in docs/
 - [ ] TXXX Code cleanup and refactoring
 - [ ] TXXX Performance optimization across all stories
-- [ ] TXXX [P] Additional unit tests (if requested) in tests/unit/
+- [ ] TXXX [P] Additional unit tests (if requested) in tests/unit/[name].spec.ts
 - [ ] TXXX Security hardening
 - [ ] TXXX Run quickstart.md validation
 

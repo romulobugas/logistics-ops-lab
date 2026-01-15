@@ -1,50 +1,114 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report:
+- Version change: 1.0.0 → 1.0.1 (PATCH: Template alignment and consistency improvements)
+- Modified principles: None (principles unchanged)
+- Added sections: None
+- Removed sections: None
+- Templates updated:
+  ✅ .specify/templates/plan-template.md (aligned technology stack, added constitution gates, updated NestJS structure)
+  ✅ .specify/templates/tasks-template.md (TypeScript paths, observability requirements, test file extensions)
+- Follow-up TODOs: None
+-->
+
+# logistics-ops-lab Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Architecture-First (NON-NEGOTIABLE)
+All features must be designed from an architectural perspective before implementation.
+Business rules, scalability concerns, and failure scenarios must be considered explicitly.
+Frameworks and libraries are implementation details and must not drive architectural decisions.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. Thin Controllers, Explicit Use-Cases
+Controllers are HTTP boundaries only.
+They must:
+- Validate input (DTOs)
+- Delegate execution to services (use-cases)
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+Controllers must never:
+- Contain business rules
+- Access persistence or external systems directly
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### III. Clear Layer Separation
+The system must respect strict layering:
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+- **Controller**: HTTP / transport boundary
+- **Service (Use-Case)**: Business orchestration and rules
+- **Repository**: Persistence and data access
+- **Messaging**: Event publishing and consumption
+- **Infrastructure**: External integrations (DB, Redis, RabbitMQ)
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+Cross-layer access is forbidden.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### IV. Event-Driven by Design
+Asynchronous messaging is a first-class architectural concern.
+Events must be used to:
+- Decouple producers from consumers
+- Isolate failures between services
+- Absorb load spikes without impacting core flows
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+Synchronous calls must not depend on asynchronous consumers to succeed.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### V. Idempotency and Failure Tolerance
+All event consumers must be idempotent.
+The system must assume:
+- Events can be duplicated
+- Consumers can restart
+- Messages can be retried
+
+Acknowledgement (ACK) must only happen after the side effect is committed.
+
+### VI. Explicit Cache Strategy
+Caching must be explicit and intentional.
+Rules:
+- Cache read-through only
+- Cache invalidation on writes is mandatory
+- Cache must never be the source of truth
+
+### VII. Observability and Traceability
+The system must be observable by default.
+All requests and background jobs must produce structured logs.
+Every operation must be traceable via a `requestId` or `eventId`.
+
+---
+
+## Technology and Architecture Constraints
+
+- Language: **TypeScript (strict mode enabled)**
+- Runtime: **Node.js (LTS)**
+- Framework: **NestJS**
+- Database (transactional): **PostgreSQL via Prisma**
+- Cache: **Redis**
+- Messaging: **RabbitMQ**
+- Local orchestration: **Docker Compose**
+- Edge / entry point: **Nginx reverse proxy**
+
+No alternative technologies may be introduced without explicit justification.
+
+---
+
+## Development Workflow and Quality Standards
+
+- Each feature must be developed in an isolated feature branch.
+- Specs must exist before implementation.
+- Implementation must conform to the active spec and this Constitution.
+- Features must be small, incremental, and independently runnable.
+- Health endpoints are mandatory for all services.
+- Environment configuration must be externalized (`.env.example` required).
+
+---
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This Constitution supersedes all other documents, specs, and plans.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+- All generated plans and tasks must comply with this Constitution.
+- Any deviation must be explicitly documented and justified in the feature spec.
+- Amendments to this Constitution require:
+  - Clear motivation
+  - Migration strategy
+  - Version bump
+
+**Version**: 1.0.1  
+**Ratified**: 2026-01-15  
+**Last Amended**: 2026-01-15

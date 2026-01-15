@@ -17,21 +17,36 @@
   the iteration process.
 -->
 
-**Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]  
-**Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]  
-**Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]  
-**Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]  
-**Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
-**Project Type**: [single/web/mobile - determines source structure]  
-**Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]  
-**Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
-**Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
+**Language/Version**: TypeScript (strict mode) via Node.js (LTS)  
+**Primary Dependencies**: NestJS framework, Prisma ORM  
+**Storage**: PostgreSQL (transactional), Redis (cache)  
+**Testing**: Jest (unit), Supertest (integration)  
+**Target Platform**: Linux server with Docker Compose orchestration  
+**Project Type**: Web application (backend services)  
+**Performance Goals**: Domain-specific (e.g., 1000 req/s, <200ms p95)  
+**Constraints**: Must comply with constitution principles (architecture-first, event-driven, observability)  
+**Scale/Scope**: Domain-specific (e.g., 10k users, logistics operations volume)
 
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+### Required Compliance Gates
+
+- **Architecture-First**: Feature design must explicitly address business rules, scalability, and failure scenarios before implementation
+- **Layer Separation**: Implementation must respect Controller → Service → Repository → Infrastructure boundaries
+- **Event-Driven**: Asynchronous messaging must be used for decoupling and failure isolation where appropriate
+- **Idempotency**: All event consumers must be idempotent with proper ACK handling
+- **Cache Strategy**: Any caching must be read-through with mandatory invalidation on writes
+- **Observability**: All operations must include structured logging and request/event tracing
+- **Technology Stack**: Must use TypeScript/NestJS/PostgreSQL/Redis/RabbitMQ per constitution constraints
+
+### Violation Justification Required
+
+If any gate cannot be satisfied, must document in Complexity Tracking section with:
+- Specific principle being violated
+- Technical justification why violation is necessary
+- Alternative approaches considered and why they were rejected
 
 ## Project Structure
 
@@ -56,43 +71,37 @@ specs/[###-feature]/
 -->
 
 ```text
-# [REMOVE IF UNUSED] Option 1: Single project (DEFAULT)
+# NestJS Backend Application (per constitution)
 src/
-├── models/
-├── services/
-├── cli/
-└── lib/
+├── modules/
+│   ├── [feature-name]/
+│   │   ├── controllers/
+│   │   ├── services/
+│   │   ├── repositories/
+│   │   └── dto/
+│   ├── common/
+│   │   ├── decorators/
+│   │   ├── filters/
+│   │   ├── guards/
+│   │   └── interceptors/
+│   └── config/
+├── infrastructure/
+│   ├── database/
+│   ├── messaging/
+│   └── cache/
+└── main.ts
 
 tests/
-├── contract/
+├── unit/
 ├── integration/
-└── unit/
+└── contract/
 
-# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
-backend/
-├── src/
-│   ├── models/
-│   ├── services/
-│   └── api/
-└── tests/
-
-frontend/
-├── src/
-│   ├── components/
-│   ├── pages/
-│   └── services/
-└── tests/
-
-# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
-api/
-└── [same as backend above]
-
-ios/ or android/
-└── [platform-specific structure: feature modules, UI flows, platform tests]
+docker-compose.yml
+.env.example
+package.json
 ```
 
-**Structure Decision**: [Document the selected structure and reference the real
-directories captured above]
+**Structure Decision**: NestJS modular architecture following constitution principles with clear layer separation (controllers/services/repositories) and infrastructure isolation
 
 ## Complexity Tracking
 
