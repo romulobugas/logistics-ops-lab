@@ -85,7 +85,7 @@ src/
 │   │   ├── guards/
 │   │   └── interceptors/
 │   └── config/
-├── infrastructure/
+├── infra/
 │   ├── database/
 │   ├── messaging/
 │   └── cache/

@@ -1,0 +1,69 @@
+openapi: 3.0.3
+info:
+  title: Logistics Ops Lab API
+  description: Bootstrap API for logistics operations platform
+  version: 1.0.0
+  contact:
+    name: Development Team
+  license: MIT
+
+servers:
+  - url: http://localhost/api
+    description: Development server
+
+paths:
+  /health:
+    get:
+      summary: Health Check Endpoint
+      description: Returns the current health status of the API service
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Service is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - timestamp
+        - service
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy, degraded]
+          description: Current health status of the service
+          example: healthy
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of the health check
+          example: "2026-01-15T16:50:00.000Z"
+        service:
+          type: string
+          description: Name of the service being checked
+          example: "api"
+        details:
+          type: object
+          description: Additional context about the health status
+          additionalProperties: true
+          example:
+            database: "connected"
+            cache: "connected"
+            messaging: "connected"
+
+  tags:
+    - name: Health
+      description: Health check operations

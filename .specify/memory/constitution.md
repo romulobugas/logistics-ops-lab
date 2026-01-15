@@ -109,6 +109,14 @@ This Constitution supersedes all other documents, specs, and plans.
   - Migration strategy
   - Version bump
 
+## Data Access Policy (Bootstrap Exception)
+
+- This repository uses PostgreSQL as the primary datastore.
+- Prisma is the standard ORM for domain features.
+- **Bootstrap features (e.g., 001-bootstrap-monorepo) MAY omit ORM and DB integration**, limiting scope to infrastructure containers and health endpoints.
+- First domain feature MUST introduce Prisma and database integration following the standard approach.
+
+
 **Version**: 1.0.1  
 **Ratified**: 2026-01-15  
 **Last Amended**: 2026-01-15
