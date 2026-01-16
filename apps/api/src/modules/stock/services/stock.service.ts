@@ -9,9 +9,9 @@ export class StockService {
 
   async createSku(createSkuDto: CreateSkuDto) {
     // Check if SKU code already exists
-    const existingSku = await this.stockRepository.findSkuByCode(createSkuDto.code);
+    const existingSku = await this.stockRepository.findSkuByCode(createSkuDto.ean || '');
     if (existingSku) {
-      throw new ConflictException(`SKU with code '${createSkuDto.code}' already exists`);
+      throw new ConflictException(`SKU with EAN '${createSkuDto.ean}' already exists`);
     }
 
     // Create SKU
@@ -40,9 +40,9 @@ export class StockService {
     }
 
     return {
-      skuCode: sku.code,
-      description: sku.description,
-      unit: sku.unit,
+      skuCode: sku.ean || 'N/A',
+      description: sku.description || 'N/A',
+      unit: sku.unitId,
       quantity: balance.quantity,
       updatedAt: balance.updatedAt,
     };
@@ -87,7 +87,7 @@ export class StockService {
     });
 
     return {
-      skuCode: sku.code,
+      skuCode: sku.ean || 'N/A',
       type: stockMovementDto.type,
       quantity: stockMovementDto.quantity,
       previousBalance: currentBalance.quantity,

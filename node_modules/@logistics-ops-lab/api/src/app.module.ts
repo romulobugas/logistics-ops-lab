@@ -4,6 +4,12 @@ import { HealthModule } from './modules/health/health.module';
 import { StockModule } from './modules/stock/stock.module';
 import { AuthModule } from './modules/auth/auth.module';
 
+import { UnitModule } from './modules/unit/unit.module';
+import { ProductGroupModule } from './modules/product-group/product-group.module';
+import { StorageGroupModule } from './modules/storage-group/storage-group.module';
+import { ProductModule } from './modules/product/product.module';
+import { SkuModule } from './modules/sku/sku.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -13,6 +19,11 @@ import { AuthModule } from './modules/auth/auth.module';
     HealthModule,
     StockModule,
     AuthModule,
+    UnitModule,
+    ProductGroupModule,
+    StorageGroupModule,
+    ProductModule,
+    SkuModule,
   ],
 })
 export class AppModule {}

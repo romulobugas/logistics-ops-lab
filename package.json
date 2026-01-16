@@ -34,5 +34,8 @@
     "node": ">=20.0.0",
     "pnpm": ">=8.0.0"
   },
-  "packageManager": "pnpm@8.0.0"
+  "packageManager": "pnpm@8.0.0",
+  "dependencies": {
+    "react-hook-form": "^7.71.1"
+  }
 }

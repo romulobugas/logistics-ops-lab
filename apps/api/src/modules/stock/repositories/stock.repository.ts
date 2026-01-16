@@ -9,15 +9,15 @@ export class StockRepository {
     this.prisma = new PrismaClient();
   }
 
-  async createSku(data: { code: string; description: string; unit: string }): Promise<SKU> {
+  async createSku(data: { ean?: string; description?: string; unitId: string; productId: string }): Promise<SKU> {
     return this.prisma.sKU.create({
       data,
     });
   }
 
-  async findSkuByCode(code: string): Promise<SKU | null> {
+  async findSkuByCode(ean: string): Promise<SKU | null> {
     return this.prisma.sKU.findUnique({
-      where: { code },
+      where: { ean },
     });
   }
 

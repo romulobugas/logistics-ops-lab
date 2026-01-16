@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import LoginPage from '../pages/Login/LoginPage.tsx'
-import HomePage from '../pages/Home/HomePage.tsx'
+import HomePage from '../pages/Home/HomePage.tsx';
+import ProductMaintenancePage from '../pages/Products/ProductMaintenancePage';
 import ProtectedRoute from './ProtectedRoute.tsx'
 
 const App = () => (
@@ -12,6 +13,14 @@ const App = () => (
       element={
         <ProtectedRoute>
           <HomePage />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/products"
+      element={
+        <ProtectedRoute>
+          <ProductMaintenancePage />
         </ProtectedRoute>
       }
     />
