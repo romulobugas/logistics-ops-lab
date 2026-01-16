@@ -10,6 +10,8 @@ exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const health_module_1 = require("./modules/health/health.module");
+const stock_module_1 = require("./modules/stock/stock.module");
+const auth_module_1 = require("./modules/auth/auth.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -21,6 +23,8 @@ exports.AppModule = AppModule = __decorate([
                 envFilePath: '.env',
             }),
             health_module_1.HealthModule,
+            stock_module_1.StockModule,
+            auth_module_1.AuthModule,
         ],
     })
 ], AppModule);

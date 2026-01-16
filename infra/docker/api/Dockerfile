@@ -2,15 +2,18 @@ FROM node:20-alpine
 
 WORKDIR /usr/src/app
 
-COPY package*.json ./
-COPY apps/api/package.json ./apps/api/
-
-RUN npm install
-
+# Copy everything first
 COPY . .
 
-RUN npm install
+# Install dependencies
+RUN npm install -g pnpm
+RUN pnpm install
+
+# Generate Prisma client and build
+RUN pnpm exec prisma generate --schema=apps/api/prisma/schema.prisma
+RUN pnpm --filter @logistics-ops-lab/api build
 
 EXPOSE 3000
 
-CMD ["npx", "ts-node", "apps/api/src/main.ts"]
+# Run compiled API
+CMD ["node", "apps/api/dist/main.js"]
