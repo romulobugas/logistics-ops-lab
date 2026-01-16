@@ -1,18 +1,21 @@
-import { IsString, IsNotEmpty, MaxLength } from 'class-validator';
+import { IsString, IsNotEmpty, MaxLength, IsOptional } from 'class-validator';
 
 export class CreateSkuDto {
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @MaxLength(50)
-  code!: string;
+  ean?: string;
 
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @MaxLength(200)
-  description!: string;
+  description?: string;
 
   @IsString()
   @IsNotEmpty()
-  @MaxLength(20)
-  unit!: string;
+  unitId!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  productId!: string;
 }

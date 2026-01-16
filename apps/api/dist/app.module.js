@@ -12,6 +12,11 @@ const config_1 = require("@nestjs/config");
 const health_module_1 = require("./modules/health/health.module");
 const stock_module_1 = require("./modules/stock/stock.module");
 const auth_module_1 = require("./modules/auth/auth.module");
+const unit_module_1 = require("./modules/unit/unit.module");
+const product_group_module_1 = require("./modules/product-group/product-group.module");
+const storage_group_module_1 = require("./modules/storage-group/storage-group.module");
+const product_module_1 = require("./modules/product/product.module");
+const sku_module_1 = require("./modules/sku/sku.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -25,6 +30,11 @@ exports.AppModule = AppModule = __decorate([
             health_module_1.HealthModule,
             stock_module_1.StockModule,
             auth_module_1.AuthModule,
+            unit_module_1.UnitModule,
+            product_group_module_1.ProductGroupModule,
+            storage_group_module_1.StorageGroupModule,
+            product_module_1.ProductModule,
+            sku_module_1.SkuModule,
         ],
     })
 ], AppModule);

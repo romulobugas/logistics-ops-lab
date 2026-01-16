@@ -1,12 +1,14 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { LoginDto, RegisterDto, AuthResponseDto } from '../dto/login.dto';
 import { PrismaService } from './prisma.service';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
   constructor(private prisma: PrismaService) {}
 
   async login(loginDto: LoginDto, ip?: string, userAgent?: string): Promise<AuthResponseDto> {
+    console.log('AuthService.login called for:', loginDto.email);
     const { email, password } = loginDto;
 
     const user = await (this.prisma as any).user.findUnique({
@@ -212,13 +214,12 @@ export class AuthService {
   }
 
   private async hashPassword(password: string): Promise<string> {
-    // Simple hashing - in production, use bcrypt
-    return Buffer.from(password + 'salt').toString('base64');
+    const saltRounds = 10;
+    return bcrypt.hash(password, saltRounds);
   }
 
   private async comparePassword(plainPassword: string, hashedPassword: string): Promise<boolean> {
-    const hashedInput = Buffer.from(plainPassword + 'salt').toString('base64');
-    return hashedInput === hashedPassword;
+    return bcrypt.compare(plainPassword, hashedPassword);
   }
 
   private async logAccess(

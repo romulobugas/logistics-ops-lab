@@ -11,18 +11,134 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model SKU {
-  id          String   @id @default(cuid())
-  code        String   @unique
-  description String
-  unit        String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+// ==================================================================
+// Product & SKU Management
+// ==================================================================
 
-  stockBalances   StockBalance[]
-  stockMovements  StockMovement[]
+model Product {
+  id                     String    @id @default(cuid())
+  code                   String    @unique
+  name                   String
+  depositor              String?   // Depositante
+  supplier               String?   // Fornecedor
+  productType            String?   // Tipo de Produto
+  sanitaryClassification String?   // Classificação Sanitária
+  shelfLifeDays          Int?      // Shelf Life (Dias)
+  usefulLifeDays         Int?      // Vida útil (Dias)
+  quarantineDays         Int?      // Dias de Quarentena
+  minStockLevel          Int?      // Nível Mínimo de Armazenagem
+  maxStockLevel          Int?      // Nível Máximo de Armazenagem
+  isActive               Boolean   @default(true)
+  controlsExpiry         Boolean   @default(false) // Controla Validade
+  closedPanel            Boolean   @default(false) // Painel Fechado
+  showOnEntryNote        Boolean   @default(false) // Exibir item na Nota de Entrada
+  makesOrder             Boolean   @default(false) // Faz pedido
+  controlsBatch          Boolean   @default(false) // Controla Lote
+  gridSewing             Boolean   @default(false) // Costura Grade
+  quarantine             Boolean   @default(false) // Quarentena
+  dynamicPicking         Boolean   @default(false) // Picking Dinâmico
+  separationMagnitude    Boolean   @default(false) // Grandeza na Separação
+  informExpiryOnCheck    Boolean   @default(false) // Informar validade na conferência
+  isProductKit           Boolean   @default(false) // Kit de Produto
+  specialComposition     Boolean   @default(false) // Composição Especial
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  // Relations
+  skus                   SKU[]
+  productGroupId         String?
+  storageGroupId         String?
+  baseUnitId             String?
+  entryUnitId            String?
+  storageUnitId          String?
+  pickingUnitId          String?
+  altPickingUnitId       String?
+  productGroup           ProductGroup? @relation(fields: [productGroupId], references: [id])
+  storageGroup           StorageGroup? @relation(fields: [storageGroupId], references: [id])
+  baseUnit               Unit?         @relation("BaseUnit", fields: [baseUnitId], references: [id])
+  entryUnit              Unit?         @relation("EntryUnit", fields: [entryUnitId], references: [id])
+  storageUnit            Unit?         @relation("StorageUnit", fields: [storageUnitId], references: [id])
+  pickingUnit            Unit?         @relation("PickingUnit", fields: [pickingUnitId], references: [id])
+  altPickingUnit         Unit?         @relation("AltPickingUnit", fields: [altPickingUnitId], references: [id])
+
+  @@map("products")
+}
+
+model SKU {
+  id                 String    @id @default(cuid())
+  ean                String?   @unique // Código de Barra
+  unitId             String              // Unidade
+  conversionFactor   Float     @default(1) // Qt. por Embalagem
+  brand              String?             // Marca
+  color              String?             // Cor
+  size               String?             // Tamanho
+  weightKg           Float?              // Peso (KG)
+  volumeM3           Float?              // Vol
+  heightCm           Float?              // Altura (cm)
+  widthCm            Float?              // Largura (cm)
+  lengthCm           Float?              // Comprimento (cm)
+  standardPallet     String?             // Palete Padrão
+  standardBox        String?             // Caixa Padrão
+  maxHeightCm        Float?              // Altura Máxima (CX/Unid)
+  palletizing        Int?                // Paletização
+  lastro             Int?                // Lastro
+  recipientType      String?             // Tipo de Recipiente
+  allowBarcodeZero   Boolean   @default(false)
+  allowConsignated   Boolean   @default(false)
+  allowOverlap       Boolean   @default(false)
+  allowTumble        Boolean   @default(false)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  // Relations
+  productId          String
+  product            Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  unit               Unit        @relation(fields: [unitId], references: [id])
+  stockBalances      StockBalance[]
+  stockMovements     StockMovement[]
 
   @@map("skus")
+}
+
+model Unit {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  abbreviation String   @unique
+  createdAt    DateTime @default(now())
+
+  // Relations
+  skus         SKU[]
+  baseProducts Product[] @relation("BaseUnit")
+  entryProducts Product[] @relation("EntryUnit")
+  storageProducts Product[] @relation("StorageUnit")
+  pickingProducts Product[] @relation("PickingUnit")
+  altPickingProducts Product[] @relation("AltPickingUnit")
+
+  @@map("units")
+}
+
+model ProductGroup {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  // Relations
+  products    Product[]
+
+  @@map("product_groups")
+}
+
+model StorageGroup {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  // Relations
+  products    Product[]
+
+  @@map("storage_groups")
 }
 
 model StockBalance {

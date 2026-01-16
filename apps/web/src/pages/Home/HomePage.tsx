@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { authStorage } from '../../features/auth/authStorage'
 import '../../styles/home.css'
 
@@ -36,12 +37,12 @@ const HomePage = () => {
 
         <nav className="menu-section">
           <h4>Visão Geral</h4>
-          <a className="menu-link active" href="#">
+          <Link className="menu-link active" to="/home">
             <span className="icon">📊</span> Dashboard
-          </a>
-          <a className="menu-link" href="#">
-            <span className="icon">📦</span> SKUs
-          </a>
+          </Link>
+          <Link className="menu-link" to="/products">
+            <span className="icon">📦</span> Manutenção de Produtos
+          </Link>
           <a className="menu-link" href="#">
             <span className="icon">🔁</span> Movimentos
           </a>

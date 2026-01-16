@@ -15,6 +15,7 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<AuthResponseDto> {
+    console.log('Login attempt received:', loginDto.email);
     const ip = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('User-Agent');
 
