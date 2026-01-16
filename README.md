@@ -6,8 +6,7 @@ A comprehensive logistics operations platform built with Node.js, TypeScript, an
 
 ### Prerequisites
 
-- **Node.js**: 20.x LTS or higher
-- **pnpm**: 8.x or higher  
+- **Node.js**: 18.x LTS or higher
 - **Docker**: Latest stable with Docker Compose v2
 - **Git**: For version control
 
@@ -21,25 +20,45 @@ A comprehensive logistics operations platform built with Node.js, TypeScript, an
 
 2. **Install dependencies**
    ```bash
-   pnpm install
+   cd apps/api
+   npm install
    ```
 
 3. **Start the development environment**
    ```bash
-   docker compose up -d --build
+   docker compose -f docker-compose.simple.yml up -d --build
    ```
 
 4. **Verify the setup**
    ```bash
    # Check API health
-   curl http://localhost/api/health
-   
-   # Check Worker health  
-   curl http://localhost:3001/health
+   curl http://localhost:3000/health
    
    # View logs
-   docker compose logs -f
+   docker compose -f docker-compose.simple.yml logs -f
    ```
+
+### Quick API Test
+
+```bash
+# Create a SKU
+curl -X POST http://localhost:3000/skus \
+  -H "Content-Type: application/json" \
+  -d '{"code":"LAPTOP-001","description":"Laptop Dell","unit":"EA"}'
+
+# Add stock
+curl -X POST http://localhost:3000/stock/in \
+  -H "Content-Type: application/json" \
+  -d '{"skuCode":"LAPTOP-001","type":"IN","quantity":10,"reason":"Initial stock"}'
+
+# Check balance
+curl http://localhost:3000/stock/LAPTOP-001
+
+# Remove stock
+curl -X POST http://localhost:3000/stock/out \
+  -H "Content-Type: application/json" \
+  -d '{"skuCode":"LAPTOP-001","type":"OUT","quantity":3,"reason":"Sale"}'
+```
 
 ## 📁 Project Structure
 
@@ -132,20 +151,76 @@ pnpm start:dev
 
 ### Health Check
 
-- **GET** `/api/health`
+- **GET** `/health`
   - Returns service health status
   - Response: 200 (healthy) or 503 (unhealthy)
   - Example response:
     ```json
     {
-      "status": "healthy",
+      "status": "ok",
       "timestamp": "2026-01-15T16:50:00.000Z",
-      "service": "api",
-      "details": {
-        "uptime": 1234.56,
-        "version": "1.0.0",
-        "environment": "development"
-      }
+      "service": "logistics-ops-lab-api",
+      "version": "1.0.0"
+    }
+    ```
+
+### SKU Management
+
+- **POST** `/skus`
+  - Create a new SKU
+  - Request body:
+    ```json
+    {
+      "code": "LAPTOP-001",
+      "description": "Laptop Dell Inspiron 15",
+      "unit": "EA"
+    }
+    ```
+  - Response: 201 (created) or 422 (validation error)
+
+- **GET** `/skus/:code`
+  - Get SKU by code
+  - Response: 200 (found) or 404 (not found)
+
+### Stock Management
+
+- **POST** `/stock/in`
+  - Add stock to inventory
+  - Request body:
+    ```json
+    {
+      "skuCode": "LAPTOP-001",
+      "type": "IN",
+      "quantity": 10,
+      "reason": "Purchase order #123"
+    }
+    ```
+  - Response: 201 (created) or 422 (validation error)
+
+- **POST** `/stock/out`
+  - Remove stock from inventory
+  - Request body:
+    ```json
+    {
+      "skuCode": "LAPTOP-001", 
+      "type": "OUT",
+      "quantity": 5,
+      "reason": "Sale order #456"
+    }
+    ```
+  - Response: 201 (created) or 422 (insufficient stock)
+
+- **GET** `/stock/:skuCode`
+  - Get current stock balance
+  - Response: 200 (found) or 404 (not found)
+  - Example response:
+    ```json
+    {
+      "skuCode": "LAPTOP-001",
+      "description": "Laptop Dell Inspiron 15",
+      "unit": "EA",
+      "quantity": 45,
+      "updatedAt": "2026-01-15T16:50:00.000Z"
     }
     ```
 

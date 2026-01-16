@@ -23,8 +23,14 @@ async function bootstrap() {
             }),
         },
     });
-    const app = await core_1.NestFactory.create(app_module_1.AppModule);
-    app.useGlobalPipes(new common_1.ValidationPipe());
+    const app = await core_1.NestFactory.create(app_module_1.AppModule, {
+        logger: new common_1.Logger(),
+    });
+    app.useGlobalPipes(new common_1.ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+    }));
     const config = new swagger_1.DocumentBuilder()
         .setTitle('Logistics Ops Lab API')
         .setVersion('1.0.0')
@@ -33,7 +39,7 @@ async function bootstrap() {
     const document = swagger_1.SwaggerModule.createDocument(app, config);
     swagger_1.SwaggerModule.setup('api', app, document);
     await app.init();
-    const port = process.env.API_PORT || 3000;
+    const port = process.env.API_PORT || 3001;
     await app.listen(port);
     logger.info(`API application started on port ${port}`, {
         service: 'api',
