@@ -1,0 +1,42 @@
+.stock-movement-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 24px;
+}
+
+.stock-movement-form {
+  display: grid;
+  gap: 14px;
+}
+
+.movement-summary {
+  display: grid;
+  gap: 8px;
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 12px;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.row-selected {
+  background: #eef2ff;
+}
+
+.location-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #eef2ff;
+  color: #4338ca;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+@media (max-width: 960px) {
+  .stock-movement-grid {
+    grid-template-columns: 1fr;
+  }
+}

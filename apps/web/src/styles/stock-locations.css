@@ -1,0 +1,26 @@
+.stock-locations-grid {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 24px;
+}
+
+.stock-location-form {
+  display: grid;
+  gap: 14px;
+}
+
+.location-id {
+  font-weight: 700;
+  color: #4338ca;
+}
+
+.location-address {
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 960px) {
+  .stock-locations-grid {
+    grid-template-columns: 1fr;
+  }
+}

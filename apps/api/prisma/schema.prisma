@@ -11,6 +11,27 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum StockActivityStatus {
+  PENDING
+  IN_PROGRESS
+  FINALIZED
+}
+
+enum StockReservationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum StockActivityType {
+  IN
+  OUT
+  TRANSFER
+  RESERVE
+  RELEASE
+  ADJUSTMENT
+}
+
 // ==================================================================
 // Product & SKU Management
 // ==================================================================
@@ -96,6 +117,9 @@ model SKU {
   unit               Unit        @relation(fields: [unitId], references: [id])
   stockBalances      StockBalance[]
   stockMovements     StockMovement[]
+  stockLots          StockLot[]
+  stockReservations  StockReservation[]
+  stockActivities    StockActivity[]
 
   @@map("skus")
 }
@@ -156,12 +180,18 @@ model StockBalance {
 model StockMovement {
   id        String   @id @default(cuid())
   skuId     String
-  type      String   // IN, OUT, ADJUSTMENT
+  lotId     String?
+  locationId String?
+  destinationLocationId String?
+  type      String   // IN, OUT, TRANSFER, ADJUSTMENT
   quantity  Int
   reason    String
   createdAt DateTime @default(now())
 
-  sku SKU @relation(fields: [skuId], references: [id], onDelete: Cascade)
+  sku      SKU            @relation(fields: [skuId], references: [id], onDelete: Cascade)
+  lot      StockLot?      @relation(fields: [lotId], references: [id], onDelete: SetNull)
+  location StockLocation? @relation("StockMovementSource", fields: [locationId], references: [id], onDelete: SetNull)
+  destinationLocation StockLocation? @relation("StockMovementDestination", fields: [destinationLocationId], references: [id], onDelete: SetNull)
 
   @@map("stock_movements")
 }
@@ -177,8 +207,11 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  userRoles UserRole[]
-  accessLogs AccessLog[]
+  userRoles         UserRole[]
+  accessLogs        AccessLog[]
+  assignedActivities StockActivity[] @relation("AssignedActivities")
+  createdActivities  StockActivity[] @relation("CreatedActivities")
+  activeOperator     ActiveOperator?
 
   @@map("users")
 }
@@ -262,4 +295,100 @@ model AccessLog {
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@map("access_logs")
+}
+
+model StockLocation {
+  id        String   @id @default(cuid())
+  deposit   String   // Depósito
+  street    String   // Rua
+  block     String   // Bloco
+  level     String   // Nível
+  apartment String   // Apartamento
+  createdAt DateTime @default(now())
+
+  lots      StockLot[]
+  activities StockActivity[] @relation("ActivitySourceLocation")
+  destinationActivities StockActivity[] @relation("ActivityDestinationLocation")
+  movements StockMovement[] @relation("StockMovementSource")
+  destinationMovements StockMovement[] @relation("StockMovementDestination")
+
+  @@unique([deposit, street, block, level, apartment])
+  @@map("stock_locations")
+}
+
+model StockLot {
+  id               String   @id @default(cuid())
+  skuId            String
+  locationId       String
+  lotCode          String?  // Lote opcional
+  expiryDate       DateTime? // Validade opcional
+  quantity         Int      @default(0)
+  reservedQuantity Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  sku          SKU           @relation(fields: [skuId], references: [id], onDelete: Cascade)
+  location     StockLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  reservations StockReservation[]
+  activities   StockActivity[]
+  movements    StockMovement[]
+
+  @@map("stock_lots")
+}
+
+model StockReservation {
+  id          String                 @id @default(cuid())
+  skuId       String
+  lotId       String?
+  quantity    Int
+  status      StockReservationStatus @default(PENDING)
+  referenceId String?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  sku SKU @relation(fields: [skuId], references: [id], onDelete: Cascade)
+  lot StockLot? @relation(fields: [lotId], references: [id], onDelete: SetNull)
+  activities StockActivity[]
+
+  @@map("stock_reservations")
+}
+
+model StockActivity {
+  id            String              @id @default(cuid())
+  type          StockActivityType
+  status        StockActivityStatus @default(PENDING)
+  skuId         String
+  lotId         String?
+  locationId    String?
+  destinationLocationId String?
+  reservationId String?
+  quantity      Int
+  assignedUserId String?
+  createdByUserId String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  completedAt   DateTime?
+
+  sku         SKU              @relation(fields: [skuId], references: [id], onDelete: Cascade)
+  lot         StockLot?        @relation(fields: [lotId], references: [id], onDelete: SetNull)
+  location    StockLocation?   @relation("ActivitySourceLocation", fields: [locationId], references: [id], onDelete: SetNull)
+  destinationLocation StockLocation? @relation("ActivityDestinationLocation", fields: [destinationLocationId], references: [id], onDelete: SetNull)
+  reservation StockReservation? @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+  assignedUser User?           @relation("AssignedActivities", fields: [assignedUserId], references: [id], onDelete: SetNull)
+  createdByUser User?          @relation("CreatedActivities", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@map("stock_activities")
+}
+
+model ActiveOperator {
+  id         String   @id @default(cuid())
+  userId     String
+  isActive   Boolean  @default(true)
+  lastSeenAt DateTime @updatedAt
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId])
+  @@map("active_operators")
 }

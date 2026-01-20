@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsNumber, IsIn, Min, MaxLength } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, IsIn, Min, MaxLength, IsOptional } from 'class-validator';
 
 export class StockMovementDto {
   @IsString()
@@ -6,8 +6,21 @@ export class StockMovementDto {
   skuCode!: string;
 
   @IsString()
-  @IsIn(['IN', 'OUT', 'ADJUSTMENT'])
-  type!: string;
+  @IsOptional()
+  @IsIn(['IN', 'OUT', 'ADJUSTMENT', 'TRANSFER'])
+  type?: string;
+
+  @IsString()
+  @IsOptional()
+  lotId?: string;
+
+  @IsString()
+  @IsOptional()
+  locationId?: string;
+
+  @IsString()
+  @IsOptional()
+  destinationLocationId?: string;
 
   @IsNumber()
   @Min(1)

@@ -43,19 +43,22 @@ const HomePage = () => {
           <Link className="menu-link" to="/products">
             <span className="icon">📦</span> Manutenção de Produtos
           </Link>
-          <a className="menu-link" href="#">
-            <span className="icon">🔁</span> Movimentos
-          </a>
-          <a className="menu-link" href="#">
+          <Link className="menu-link" to="/stock/movement">
+            <span className="icon">🔁</span> Movimentação de SKU
+          </Link>
+          <Link className="menu-link" to="/stock/balance">
             <span className="icon">📉</span> Saldo de Estoque
-          </a>
+          </Link>
         </nav>
 
         <nav className="menu-section">
           <h4>Operação</h4>
-          <a className="menu-link" href="#">
-            <span className="icon">📝</span> Movimentação IN/OUT
-          </a>
+          <Link className="menu-link" to="/stock/active">
+            <span className="icon">📝</span> Convocação Ativa
+          </Link>
+          <Link className="menu-link" to="/stock/locations">
+            <span className="icon">📍</span> Endereços de Estoque
+          </Link>
           <a className="menu-link" href="#">
             <span className="icon">🧾</span> Logs de Acesso
           </a>
