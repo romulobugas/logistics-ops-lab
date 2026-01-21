@@ -1,0 +1,36 @@
+.stock-balance-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.stock-balance-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.balance-card {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 12px 14px;
+  min-width: 160px;
+  display: grid;
+  gap: 4px;
+}
+
+.balance-card strong {
+  font-size: 1.1rem;
+  color: #0f172a;
+}
+
+.balance-filter {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 960px) {
+  .balance-filter {
+    grid-template-columns: 1fr;
+  }
+}

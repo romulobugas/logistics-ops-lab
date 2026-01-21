@@ -51,10 +51,11 @@ services:
       retries: 3
 
   api:
-    image: node:20-bullseye
+    build:
+      context: .
+      dockerfile: infra/docker/api/Dockerfile
     container_name: logistics-api
     restart: unless-stopped
-    working_dir: /usr/src/app
     environment:
       NODE_ENV: development
       DATABASE_HOST: postgres
@@ -73,11 +74,6 @@ services:
       API_PORT: 3000
     ports:
       - "3000:3000"
-    volumes:
-      - .:/usr/src/app
-      - ./apps/api/node_modules:/usr/src/app/apps/api/node_modules
-      - ./node_modules:/usr/src/app/node_modules
-    command: ["node", "apps/api/dist/main.js"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -93,10 +89,11 @@ services:
       start_period: 40s
 
   worker:
-    image: node:20-bullseye
+    build:
+      context: .
+      dockerfile: infra/docker/worker/Dockerfile
     container_name: logistics-worker
     restart: unless-stopped
-    working_dir: /usr/src/app
     environment:
       NODE_ENV: development
       DATABASE_HOST: postgres
@@ -114,11 +111,6 @@ services:
       RABBITMQ_VHOST: logistics_ops_lab
     ports:
       - "3002:3001"
-    volumes:
-      - .:/usr/src/app
-      - ./apps/worker/node_modules:/usr/src/app/apps/worker/node_modules
-      - ./node_modules:/usr/src/app/node_modules
-    command: ["node", "apps/worker/dist/main.js"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -134,14 +126,13 @@ services:
       start_period: 40s
 
   nginx:
-    image: nginx:alpine
+    build:
+      context: .
+      dockerfile: infra/docker/nginx/Dockerfile
     container_name: logistics-nginx
     restart: unless-stopped
     ports:
       - "80:80"
-    volumes:
-      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./apps/web/dist:/usr/share/nginx/html/web:ro
     depends_on:
       api:
         condition: service_healthy

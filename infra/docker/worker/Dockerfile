@@ -1,17 +1,20 @@
-FROM node:20-alpine
+FROM node:20-bullseye
 
 WORKDIR /usr/src/app
 
 # Copy everything first
 COPY . .
 
-# Install dependencies using npm (fallback if pnpm fails)
-RUN npm install -g pnpm || npm install
+# Install dependencies
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+RUN npm install --workspaces --include=dev
+RUN npm install -g @nestjs/cli
 
-# Build
-RUN npm run build || echo "Build skipped"
+# Generate Prisma client and build
+RUN npm --workspace @logistics-ops-lab/api run db:generate
+RUN npm --workspace @logistics-ops-lab/worker run build
 
 EXPOSE 3001
 
-# Use ts-node for development (fallback if build fails)
-CMD ["npx", "ts-node", "apps/worker/src/main.ts"]
+# Run compiled worker
+CMD ["node", "apps/worker/dist/main.js"]

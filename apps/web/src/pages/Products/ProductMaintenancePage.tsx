@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import Modal from '../../components/Modal';
 import ProductForm from '../../components/ProductForm';
+import '../../styles/product-maintenance.css';
 
 // Define types based on the updated Prisma schema
 interface Unit {
@@ -78,7 +79,7 @@ const ProductMaintenancePage = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-    const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isSkuModalOpen, setIsSkuModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editingSku, setEditingSku] = useState<SKU | null>(null);
@@ -135,16 +136,21 @@ const ProductMaintenancePage = () => {
   if (error) return <div style={{ color: 'red' }}>{error}</div>;
 
   return (
-    <div>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <h1>Manutenção de Produtos</h1>
+    <div className="product-maintenance">
+      <header className="product-maintenance-header">
+        <div>
+          <h1>Manutenção de Produtos</h1>
+          <p style={{ color: '#64748b', marginTop: 6 }}>
+            Cadastre produtos, gerencie SKUs e acompanhe as unidades associadas.
+          </p>
+        </div>
         <button className="btn btn-primary" onClick={handleCreateProduct}>
           Novo Produto
         </button>
       </header>
 
-      <div className="section">
-        <table>
+      <div className="section table-container">
+        <table className="table">
           <thead>
             <tr>
               <th>Código</th>
@@ -157,35 +163,57 @@ const ProductMaintenancePage = () => {
             </tr>
           </thead>
           <tbody>
-            {products.map((product) => (
-              <React.Fragment key={product.id}>
-                <tr>
-                  <td>{product.code}</td>
-                  <td>{product.name}</td>
-                  <td>{product.depositor || '-'}</td>
-                  <td>{product.supplier || '-'}</td>
-                  <td>{product.productType || '-'}</td>
-                  <td>{product.skus.length}</td>
-                  <td>
-                    <button onClick={() => handleEditProduct(product)}>Editar</button>
-                    <button onClick={() => handleCreateSku(product.id)}>Novo SKU</button>
-                  </td>
-                </tr>
-                {product.skus.map((sku) => (
-                  <tr key={sku.id} style={{ backgroundColor: '#f5f5f5' }}>
-                    <td style={{ paddingLeft: '24px' }}>- SKU: {sku.ean || '-'}</td>
-                    <td colSpan={3}>
-                      {sku.brand} {sku.color} {sku.size}
-                    </td>
-                    <td>{sku.unit.abbreviation}</td>
-                    <td>{sku.conversionFactor}</td>
+            {!products.length ? (
+              <tr>
+                <td colSpan={7} className="empty-state">
+                  Nenhum produto cadastrado ainda. Clique em “Novo Produto” para começar.
+                </td>
+              </tr>
+            ) : (
+              products.map((product) => (
+                <React.Fragment key={product.id}>
+                  <tr>
+                    <td>{product.code}</td>
+                    <td>{product.name}</td>
+                    <td>{product.depositor || '-'}</td>
+                    <td>{product.supplier || '-'}</td>
+                    <td>{product.productType || '-'}</td>
                     <td>
-                      <button onClick={() => handleEditSku(sku, product)}>Editar</button>
+                      <span className="sku-count">{product.skus.length}</span>
+                    </td>
+                    <td>
+                      <div className="table-actions">
+                        <button className="table-action" onClick={() => handleEditProduct(product)}>
+                          Editar
+                        </button>
+                        <button className="table-action secondary" onClick={() => handleCreateSku(product.id)}>
+                          Novo SKU
+                        </button>
+                      </div>
                     </td>
                   </tr>
-                ))}
-              </React.Fragment>
-            ))}
+                  {product.skus.map((sku) => (
+                    <tr key={sku.id} className="sku-row">
+                      <td>
+                        <span className="sku-label">SKU</span> {sku.ean || '-'}
+                      </td>
+                      <td colSpan={3}>
+                        {[sku.brand, sku.color, sku.size].filter(Boolean).join(' ') || 'Sem descrição'}
+                      </td>
+                      <td>{sku.unit.abbreviation}</td>
+                      <td>{sku.conversionFactor}</td>
+                      <td>
+                        <div className="table-actions">
+                          <button className="table-action" onClick={() => handleEditSku(sku, product)}>
+                            Editar
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </React.Fragment>
+              ))
+            )}
           </tbody>
         </table>
       </div>

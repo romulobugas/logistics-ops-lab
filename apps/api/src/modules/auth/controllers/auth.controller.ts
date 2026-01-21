@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, UseGuards, Req, Res } from '@nestjs/common';
+import { Controller, Post, Body, Get, UseGuards, Req, Res, Param } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { AuthService } from '../services/auth.service';
 import { LoginDto, RegisterDto, AuthResponseDto } from '../dto/login.dto';
@@ -48,8 +48,13 @@ export class AuthController {
   async getProfile(@Req() req: AuthenticatedRequest) {
     return {
       user: req.user,
-      message: 'Current user profile',
     };
+  }
+
+  @Get('users/:id')
+  @UseGuards(AuthGuard)
+  async getUserById(@Param('id') id: string) {
+    return this.authService.findUserById(id);
   }
 
   @Get('permissions')

@@ -74,7 +74,7 @@ const LoginPage = () => {
         <div className="login-demo">
           <strong>Usuários de Demonstração</strong>
           <p>Administrador: teste@logistics.com / teste@123</p>
-          <p>Usuário Comum: user@logistics.com / user123</p>
+          <p>Usuário Comum: user@logistics.com / user123salt</p>
         </div>
       </div>
     </div>

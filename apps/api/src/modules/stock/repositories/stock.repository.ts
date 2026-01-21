@@ -1,15 +1,20 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaClient, SKU, StockBalance } from '@prisma/client';
+import { SKU, StockBalance } from '@prisma/client';
+import { PrismaService } from '../../../prisma/prisma.service';
 
 @Injectable()
 export class StockRepository {
-  private prisma: PrismaClient;
+  constructor(private readonly prisma: PrismaService) {}
 
-  constructor() {
-    this.prisma = new PrismaClient();
-  }
-
-  async createSku(data: { ean?: string; description?: string; unitId: string; productId: string }): Promise<SKU> {
+  async createSku(data: {
+    ean?: string;
+    unitId: string;
+    productId: string;
+    conversionFactor?: number;
+    brand?: string;
+    color?: string;
+    size?: string;
+  }): Promise<SKU> {
     return this.prisma.sKU.create({
       data,
     });
@@ -43,6 +48,9 @@ export class StockRepository {
 
   async createStockMovement(data: {
     skuId: string;
+    lotId?: string;
+    locationId?: string;
+    destinationLocationId?: string;
     type: string;
     quantity: number;
     reason: string;

@@ -158,64 +158,147 @@ async function main() {
     });
   }
 
-  // Create sample SKUs
-  const sku1 = await prisma.sKU.upsert({
-    where: { code: 'LAPTOP-001' },
+  const unit = await prisma.unit.upsert({
+    where: { abbreviation: 'UN' },
     update: {},
     create: {
-      code: 'LAPTOP-001',
-      description: 'Laptop Dell Inspiron 15',
-      unit: 'EA',
+      name: 'Unidade',
+      abbreviation: 'UN',
+    },
+  });
+
+  const productA = await prisma.product.upsert({
+    where: { code: 'PROD-001' },
+    update: {},
+    create: {
+      code: 'PROD-001',
+      name: 'Tênis Sprint',
+      controlsBatch: false,
+      controlsExpiry: false,
+    },
+  });
+
+  const productB = await prisma.product.upsert({
+    where: { code: 'PROD-002' },
+    update: {},
+    create: {
+      code: 'PROD-002',
+      name: 'Suplemento Whey 900g',
+      controlsBatch: true,
+      controlsExpiry: true,
+    },
+  });
+
+  const productC = await prisma.product.upsert({
+    where: { code: 'PROD-003' },
+    update: {},
+    create: {
+      code: 'PROD-003',
+      name: 'Kit Garrafa Térmica',
+      controlsBatch: true,
+      controlsExpiry: false,
+    },
+  });
+
+  const sku1 = await prisma.sKU.upsert({
+    where: { ean: '7891000000010' },
+    update: {},
+    create: {
+      ean: '7891000000010',
+      productId: productA.id,
+      unitId: unit.id,
+      brand: 'LogiBrand',
+      color: 'Azul',
+      size: '42',
     },
   });
 
   const sku2 = await prisma.sKU.upsert({
-    where: { code: 'MOUSE-001' },
+    where: { ean: '7891000000027' },
     update: {},
     create: {
-      code: 'MOUSE-001',
-      description: 'Mouse USB Wireless',
-      unit: 'EA',
+      ean: '7891000000027',
+      productId: productB.id,
+      unitId: unit.id,
+      brand: 'NutriLab',
+      size: '900g',
     },
   });
 
   const sku3 = await prisma.sKU.upsert({
-    where: { code: 'KEYBOARD-001' },
+    where: { ean: '7891000000034' },
     update: {},
     create: {
-      code: 'KEYBOARD-001',
-      description: 'Keyboard Mechanical RGB',
-      unit: 'EA',
+      ean: '7891000000034',
+      productId: productC.id,
+      unitId: unit.id,
+      brand: 'ThermoX',
+      color: 'Preto',
     },
   });
 
-  // Create initial stock balances
-  await prisma.stockBalance.upsert({
-    where: { skuId: sku1.id },
-    update: { quantity: 50 },
-    create: {
-      skuId: sku1.id,
-      quantity: 50,
-    },
-  });
+  const locationSeeds = [
+    { deposit: 'DEP-01', street: 'Rua A', block: 'A', level: '1', apartment: '01' },
+    { deposit: 'DEP-01', street: 'Rua A', block: 'A', level: '1', apartment: '02' },
+    { deposit: 'DEP-01', street: 'Rua A', block: 'B', level: '1', apartment: '01' },
+    { deposit: 'DEP-01', street: 'Rua B', block: 'A', level: '1', apartment: '01' },
+    { deposit: 'DEP-01', street: 'Rua B', block: 'A', level: '2', apartment: '01' },
+    { deposit: 'DEP-01', street: 'Rua C', block: 'B', level: '1', apartment: '03' },
+    { deposit: 'DEP-02', street: 'Rua D', block: 'A', level: '1', apartment: '01' },
+    { deposit: 'DEP-02', street: 'Rua D', block: 'B', level: '2', apartment: '02' },
+    { deposit: 'DEP-02', street: 'Rua E', block: 'A', level: '1', apartment: '04' },
+    { deposit: 'DEP-02', street: 'Rua F', block: 'C', level: '3', apartment: '01' },
+  ];
 
-  await prisma.stockBalance.upsert({
-    where: { skuId: sku2.id },
-    update: { quantity: 100 },
-    create: {
-      skuId: sku2.id,
-      quantity: 100,
-    },
-  });
+  await prisma.stockLocation.createMany({ data: locationSeeds, skipDuplicates: true });
+  const locations = await prisma.stockLocation.findMany({ orderBy: { createdAt: 'asc' } });
 
-  await prisma.stockBalance.upsert({
-    where: { skuId: sku3.id },
-    update: { quantity: 25 },
-    create: {
-      skuId: sku3.id,
-      quantity: 25,
-    },
-  });
+  const existingLots = await prisma.stockLot.count();
+  if (existingLots === 0 && locations.length) {
+    const lotSeeds: Array<{
+      skuId: string;
+      locationId: string;
+      lotCode?: string;
+      expiryDate?: Date;
+      quantity: number;
+    }> = [];
+
+    const skuConfigs = [
+      { sku: sku1, lotPrefix: 'TEN', expiry: false },
+      { sku: sku2, lotPrefix: 'WHEY', expiry: true },
+      { sku: sku3, lotPrefix: 'KIT', expiry: false },
+    ];
+
+    skuConfigs.forEach((config, skuIndex) => {
+      for (let i = 0; i < 3; i += 1) {
+        const location = locations[(skuIndex * 3 + i) % locations.length];
+        const quantity = 20 + skuIndex * 10 + i * 5;
+        const expiryDate = config.expiry ? new Date(2026, skuIndex, 10 + i) : undefined;
+
+        lotSeeds.push({
+          skuId: config.sku.id,
+          locationId: location.id,
+          lotCode: `${config.lotPrefix}-${i + 1}`,
+          expiryDate,
+          quantity,
+        });
+      }
+    });
+
+    const totals = new Map<string, number>();
+    for (const lot of lotSeeds) {
+      await prisma.stockLot.create({ data: lot });
+      totals.set(lot.skuId, (totals.get(lot.skuId) ?? 0) + lot.quantity);
+    }
+
+    for (const [skuId, quantity] of totals.entries()) {
+      await prisma.stockBalance.upsert({
+        where: { skuId },
+        update: { quantity },
+        create: { skuId, quantity },
+      });
+    }
+  }
 
   console.log('Seeding finished.');
   console.log('Admin user: teste@logistics.com / teste@123');
