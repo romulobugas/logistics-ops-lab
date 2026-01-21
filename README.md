@@ -1,63 +1,45 @@
 # Logistics Ops Lab
 
-A comprehensive logistics operations platform built with Node.js, TypeScript, and NestJS.
+Plataforma de operações logísticas (mini WMS) para demonstrar backend, worker e painel web. Stack: Node.js, TypeScript, NestJS, React e RabbitMQ.
 
-## 🚀 Quick Start
+## ✅ Escopo atual
 
-### Prerequisites
+- Cadastros: produtos, SKUs, unidades, grupos de produto e armazenagem
+- Estoque: endereços, lotes, reservas e saldo disponível
+- Movimentações: entrada, saída, transferência e ajuste
+- Autenticação com perfis e permissões por rota
+- Worker para processar atividades via RabbitMQ
+- Painel web para login, manutenção de produtos, movimentações e rastreabilidade
 
-- **Node.js**: 18.x LTS or higher
-- **Docker**: Latest stable with Docker Compose v2
-- **Git**: For version control
+## 🚀 Início rápido (Docker)
 
-### Setup Instructions
+### Pré-requisitos
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd logistics-ops-lab
-   ```
+- **Node.js**: 20.x ou superior
+- **pnpm**: 8.x ou superior
+- **Docker**: versão estável com Compose v2
 
-2. **Install dependencies**
-   ```bash
-   cd apps/api
-   npm install
-   ```
-
-3. **Start the development environment**
-   ```bash
-   docker compose -f docker-compose.simple.yml up -d --build
-   ```
-
-4. **Verify the setup**
-   ```bash
-   # Check API health
-   curl http://localhost:3000/health
-   
-   # View logs
-   docker compose -f docker-compose.simple.yml logs -f
-   ```
-
-### Quick API Test
+### Stack completa (API + Worker + Web)
 
 ```bash
-# Create a SKU
-curl -X POST http://localhost:3000/skus \
-  -H "Content-Type: application/json" \
-  -d '{"code":"LAPTOP-001","description":"Laptop Dell","unit":"EA"}'
+pnpm install
+pnpm docker:up
+```
 
-# Add stock
-curl -X POST http://localhost:3000/stock/in \
-  -H "Content-Type: application/json" \
-  -d '{"skuCode":"LAPTOP-001","type":"IN","quantity":10,"reason":"Initial stock"}'
+### Stack simples (Postgres + API)
 
-# Check balance
-curl http://localhost:3000/stock/LAPTOP-001
+```bash
+docker compose -f docker-compose.simple.yml up -d --build
+```
 
-# Remove stock
-curl -X POST http://localhost:3000/stock/out \
-  -H "Content-Type: application/json" \
-  -d '{"skuCode":"LAPTOP-001","type":"OUT","quantity":3,"reason":"Sale"}'
+### Verificação rápida
+
+```bash
+# API direta (stack simples)
+curl http://localhost:3000/health
+
+# Via Nginx (stack completa)
+curl http://localhost/api/health
 ```
 
 ## 📁 Project Structure
