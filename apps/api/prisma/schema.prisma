@@ -15,6 +15,7 @@ enum StockActivityStatus {
   PENDING
   IN_PROGRESS
   FINALIZED
+  CANCELLED
 }
 
 enum StockReservationStatus {
@@ -353,6 +354,21 @@ model StockReservation {
   @@map("stock_reservations")
 }
 
+model ActivityTrace {
+  id           String   @id @default(cuid())
+  activityId   String
+  timestamp    DateTime @default(now())
+  status       String   // Ex: CREATED, QUEUED, PROCESSING, FINALIZED, ERROR
+  source       String   // Ex: API, WORKER
+  message      String
+  userId       String?
+
+  activity     StockActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@index([activityId])
+  @@map("activity_traces")
+}
+
 model StockActivity {
   id            String              @id @default(cuid())
   type          StockActivityType
@@ -376,19 +392,19 @@ model StockActivity {
   reservation StockReservation? @relation(fields: [reservationId], references: [id], onDelete: SetNull)
   assignedUser User?           @relation("AssignedActivities", fields: [assignedUserId], references: [id], onDelete: SetNull)
   createdByUser User?          @relation("CreatedActivities", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  traces      ActivityTrace[]
 
   @@map("stock_activities")
 }
 
 model ActiveOperator {
   id         String   @id @default(cuid())
-  userId     String
+  userId     String   @unique
   isActive   Boolean  @default(true)
   lastSeenAt DateTime @updatedAt
   createdAt  DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId])
   @@map("active_operators")
 }

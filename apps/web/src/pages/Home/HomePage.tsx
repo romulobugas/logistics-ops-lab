@@ -75,6 +75,9 @@ const HomePage = () => {
           <a className="menu-link" href="#">
             <span className="icon">📈</span> Relatórios de Estoque
           </a>
+          <Link className="menu-link" to="/reports/traceability">
+            <span className="icon">ιχ</span> Rastreabilidade
+          </Link>
           <a className="menu-link" href="#">
             <span className="icon">📋</span> Auditoria
           </a>

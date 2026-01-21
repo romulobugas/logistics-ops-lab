@@ -4,9 +4,10 @@ import { StockService } from './services/stock.service';
 import { StockRepository } from './repositories/stock.repository';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { StockQueueService } from './services/stock-queue.service';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, AuthModule],
   controllers: [
     StockController,
     StockMovementController,

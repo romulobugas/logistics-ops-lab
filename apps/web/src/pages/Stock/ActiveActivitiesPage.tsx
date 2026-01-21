@@ -22,7 +22,7 @@ interface StockLot {
 interface StockActivity {
   id: string;
   type: string;
-  status: 'PENDING' | 'IN_PROGRESS' | 'FINALIZED';
+  status: 'PENDING' | 'IN_PROGRESS' | 'FINALIZED' | 'CANCELLED';
   quantity: number;
   sku: {
     id: string;
@@ -87,6 +87,7 @@ const ActiveActivitiesPage = () => {
       if (typeFilter && activity.type !== typeFilter) {
         return false;
       }
+      // Incluir todas as atividades, incluindo canceladas
       return true;
     });
   }, [activities, statusFilter, assignedFilter, typeFilter]);
@@ -128,6 +129,32 @@ const ActiveActivitiesPage = () => {
     setActionError(null);
     setActionMessage(null);
   }, [selectedActivityId]);
+
+  const handleCancel = async (activityId: string) => {
+    let reason = prompt('Motivo do cancelamento:');
+    if (!reason || reason.trim() === '') {
+      alert('O motivo do cancelamento é obrigatório.');
+      return;
+    }
+    
+    try {
+      await api.patch(`/stock/activities/${activityId}/cancel`, { reason: reason.trim() });
+      
+      // Refresh activities list
+      const data = await api.get<StockActivity[]>('/stock/activities');
+      setActivities(data);
+      
+      // Clear selection if cancelled activity was selected
+      if (selectedActivityId === activityId) {
+        setSelectedActivityId(null);
+      }
+      
+      setActionMessage('Atividade cancelada com sucesso!');
+    } catch (error) {
+      console.error('Error cancelling activity:', error);
+      alert('Erro ao cancelar atividade. Tente novamente.');
+    }
+  };
 
   const handleAssign = async (activityId: string) => {
     if (!userId) return;
@@ -181,6 +208,8 @@ const ActiveActivitiesPage = () => {
   if (loading) return <div>Carregando atividades...</div>;
   if (error) return <div className="error-state">{error}</div>;
 
+  const isActivityFinalized = selectedActivity?.status === 'FINALIZED' || selectedActivity?.status === 'CANCELLED' as any;
+
   return (
     <div className="stock-page">
       <header className="stock-header">
@@ -199,6 +228,7 @@ const ActiveActivitiesPage = () => {
             <option value="PENDING">Pendente</option>
             <option value="IN_PROGRESS">Em andamento</option>
             <option value="FINALIZED">Finalizada</option>
+            <option value="CANCELLED">Cancelada</option>
           </select>
         </div>
         <div className="filter-group">
@@ -259,6 +289,7 @@ const ActiveActivitiesPage = () => {
                       {activity.status === 'PENDING' && 'Pendente'}
                       {activity.status === 'IN_PROGRESS' && 'Em andamento'}
                       {activity.status === 'FINALIZED' && 'Finalizada'}
+                      {activity.status === 'CANCELLED' && 'Cancelada'}
                     </span>
                   </div>
                   <div className="activity-meta">
@@ -274,23 +305,59 @@ const ActiveActivitiesPage = () => {
                   </div>
                   <div className="activity-meta muted">
                     Origem: {locationLabel(activity.location)}
+                    {activity.type === 'TRANSFER' && (
+                      <span>
+                        {' → Destino: '}
+                        {activity.destinationLocation
+                          ? locationLabel(activity.destinationLocation)
+                          : 'Não definido'}
+                      </span>
+                    )}
                   </div>
                   <div className="activity-actions">
                     {activity.status === 'PENDING' ? (
-                      <button
-                        className="table-action"
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          handleAssign(activity.id);
-                        }}
-                      >
-                        Assumir
-                      </button>
+                      <>
+                        <button
+                          className="table-action"
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleAssign(activity.id);
+                          }}
+                        >
+                          Assumir
+                        </button>
+                        <button
+                          className="table-action danger"
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleCancel(activity.id);
+                          }}
+                        >
+                          Cancelar
+                        </button>
+                      </>
+                    ) : activity.status === 'IN_PROGRESS' ? (
+                      <>
+                        <span className="activity-wait">
+                          <span className="spinner" />
+                          Em andamento
+                        </span>
+                        <button
+                          className="table-action danger"
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleCancel(activity.id);
+                          }}
+                        >
+                          Cancelar
+                        </button>
+                      </>
                     ) : (
                       <span className="activity-wait">
-                        <span className="spinner" />
-                        {activity.status === 'IN_PROGRESS' ? 'Em andamento' : 'Concluída'}
+                        {activity.status === 'FINALIZED' ? 'Concluída' : 'Cancelada'}
                       </span>
                     )}
                   </div>
@@ -327,6 +394,16 @@ const ActiveActivitiesPage = () => {
                 <span className="muted">Origem</span>
                 <strong>{locationLabel(selectedActivity.location)}</strong>
               </div>
+              {selectedActivity.type === 'TRANSFER' && (
+                <div className="detail-row">
+                  <span className="muted">Destino</span>
+                  <strong>
+                    {selectedActivity.destinationLocation
+                      ? locationLabel(selectedActivity.destinationLocation)
+                      : 'Não definido'}
+                  </strong>
+                </div>
+              )}
 
               <div className="field">
                 <label>Confirmar EAN</label>
@@ -342,9 +419,9 @@ const ActiveActivitiesPage = () => {
                       }
                     }}
                     placeholder="Bipe ou digite o EAN"
-                    disabled={eanConfirmed}
+                    disabled={eanConfirmed || isActivityFinalized}
                   />
-                  <button className="btn btn-outline" type="button" onClick={handleConfirmEan} disabled={eanConfirmed}>
+                  <button className="btn btn-outline" type="button" onClick={handleConfirmEan} disabled={eanConfirmed || isActivityFinalized}>
                     {eanConfirmed ? 'Confirmado' : 'Confirmar'}
                   </button>
                 </div>
@@ -363,12 +440,12 @@ const ActiveActivitiesPage = () => {
                     }
                   }}
                   placeholder="Bipe o ID do endereço"
-                  disabled={!eanConfirmed}
+                  disabled={!eanConfirmed || isActivityFinalized}
                 />
               </div>
 
               <div className="detail-actions">
-                <button className="btn btn-primary" type="button" onClick={handleFinalize} disabled={!eanConfirmed}>
+                <button className="btn btn-primary" type="button" onClick={handleFinalize} disabled={!eanConfirmed || isActivityFinalized}>
                   Finalizar atividade
                 </button>
               </div>

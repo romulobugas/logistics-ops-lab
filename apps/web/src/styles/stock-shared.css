@@ -79,6 +79,11 @@
   font-size: 0.85rem;
 }
 
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;
@@ -124,6 +129,15 @@
   background: #f8fafc;
   color: #475569;
   border-color: #e2e8f0;
+}
+
+.table-action.danger {
+  background-color: #dc3545;
+  color: white;
+}
+
+.table-action.danger:hover {
+  background-color: #c82333;
 }
 
 .empty-state {

@@ -9,9 +9,7 @@ import { CreateStockLotDto } from '../dto/create-stock-lot.dto';
 import { UpdateStockLotDto } from '../dto/update-stock-lot.dto';
 import { CreateStockReservationDto } from '../dto/create-stock-reservation.dto';
 import { UpdateStockReservationDto } from '../dto/update-stock-reservation.dto';
-import { CreateStockActivityDto } from '../dto/create-stock-activity.dto';
-import { UpdateStockActivityDto } from '../dto/update-stock-activity.dto';
-import { AssignStockActivityDto } from '../dto/assign-stock-activity.dto';
+import { CreateStockActivityDto, UpdateStockActivityDto, AssignStockActivityDto, CompleteStockActivityDto, CancelStockActivityDto } from '../dto/index';
 import { CreateActiveOperatorDto } from '../dto/create-active-operator.dto';
 import { UpdateActiveOperatorDto } from '../dto/update-active-operator.dto';
 import { StockQueueService } from './stock-queue.service';
@@ -137,6 +135,108 @@ export class StockService {
     };
   }
 
+  async getAvailableLocations(skuId?: string) {
+    const locations = await this.prisma.stockLocation.findMany({
+      orderBy: [
+        { deposit: 'asc' },
+        { street: 'asc' },
+        { block: 'asc' },
+        { level: 'asc' },
+        { apartment: 'asc' },
+      ],
+    });
+
+    if (!skuId) {
+      return locations;
+    }
+
+    // Filter locations that have active activities for this SKU
+    const activeActivities = await this.prisma.stockActivity.findMany({
+      where: {
+        skuId,
+        status: {
+          in: ['PENDING', 'IN_PROGRESS'],
+        },
+      },
+      select: {
+        locationId: true,
+        destinationLocationId: true,
+      },
+    });
+
+    const blockedLocationIds = new Set<string>();
+    activeActivities.forEach(activity => {
+      if (activity.locationId) blockedLocationIds.add(activity.locationId);
+      if (activity.destinationLocationId) blockedLocationIds.add(activity.destinationLocationId);
+    });
+
+    return locations.filter(location => !blockedLocationIds.has(location.id));
+  }
+
+  async getAvailableLots(skuId: string, locationId?: string) {
+    const lots = await this.prisma.stockLot.findMany({
+      where: {
+        skuId,
+        ...(locationId && { locationId }),
+      },
+      include: {
+        location: true,
+        sku: true,
+      },
+      orderBy: [
+        { expiryDate: 'asc' },
+        { createdAt: 'asc' },
+      ],
+    });
+
+    // Calculate available quantity for each lot
+    const lotsWithAvailability = await Promise.all(
+      lots.map(async (lot) => {
+        const available = await this.getAvailableStock(skuId, lot.locationId);
+        return {
+          ...lot,
+          availableQuantity: Math.min(lot.quantity, available),
+        };
+      })
+    );
+
+    return lotsWithAvailability.filter(lot => lot.availableQuantity > 0);
+  }
+
+  async getAvailableStock(skuId: string, locationId?: string): Promise<number> {
+    // Get current balance
+    const balance = await this.prisma.stockBalance.findFirst({
+      where: { skuId },
+    });
+
+    const currentBalance = balance?.quantity || 0;
+
+    // Calculate reserved quantity from active activities
+    const activeActivities = await this.prisma.stockActivity.findMany({
+      where: {
+        skuId,
+        status: {
+          in: ['PENDING', 'IN_PROGRESS'],
+        },
+        ...(locationId && {
+          OR: [
+            { locationId },
+            { destinationLocationId: locationId },
+          ],
+        }),
+      },
+    });
+
+    const reservedQuantity = activeActivities.reduce((total, activity) => {
+      if (activity.type === 'OUT' || activity.type === 'TRANSFER') {
+        return total + activity.quantity;
+      }
+      return total;
+    }, 0);
+
+    return Math.max(0, currentBalance - reservedQuantity);
+  }
+
   async requestStockMovement(stockMovementDto: StockMovementDto) {
     const sku = await this.getSkuByCode(stockMovementDto.skuCode);
     const assignedUserId = await this.pickActiveOperator();
@@ -147,16 +247,40 @@ export class StockService {
       }
     }
 
-    const activity = await this.prisma.stockActivity.create({
-      data: {
-        type: stockMovementDto.type as any,
+    const activity = await this.prisma.$transaction(async (prisma) => {
+      console.log('Creating activity via requestStockMovement:', {
+        type: stockMovementDto.type,
         skuId: sku.id,
-        lotId: stockMovementDto.lotId,
-        locationId: stockMovementDto.locationId,
-        destinationLocationId: stockMovementDto.destinationLocationId,
-        quantity: stockMovementDto.quantity,
-        assignedUserId,
-      },
+        quantity: stockMovementDto.quantity
+      });
+
+      const createdActivity = await prisma.stockActivity.create({
+        data: {
+          type: stockMovementDto.type as any,
+          skuId: sku.id,
+          lotId: stockMovementDto.lotId,
+          locationId: stockMovementDto.locationId,
+          destinationLocationId: stockMovementDto.destinationLocationId,
+          quantity: stockMovementDto.quantity,
+          assignedUserId,
+        },
+      });
+
+      console.log('Activity created via requestStockMovement:', createdActivity.id);
+
+      const trace = await prisma.activityTrace.create({
+        data: {
+          activityId: createdActivity.id,
+          status: 'CREATED',
+          source: 'API',
+          message: 'Atividade criada via movimentação de estoque.',
+          userId: null, // Não temos usuário autenticado neste endpoint
+        },
+      });
+
+      console.log('Trace CREATED created via requestStockMovement:', trace.id);
+
+      return createdActivity;
     });
 
     return activity;
@@ -330,18 +454,43 @@ export class StockService {
 
   async createActivity(dto: CreateStockActivityDto) {
     const assignedUserId = dto.assignedUserId || (await this.pickActiveOperator());
-    const activity = await this.prisma.stockActivity.create({
-      data: {
-        type: dto.type as any,
+
+    const activity = await this.prisma.$transaction(async (prisma) => {
+      console.log('Creating activity with data:', {
+        type: dto.type,
         skuId: dto.skuId,
-        lotId: dto.lotId,
-        locationId: dto.locationId,
-        destinationLocationId: dto.destinationLocationId,
-        reservationId: dto.reservationId,
-        quantity: dto.quantity,
-        assignedUserId,
-        createdByUserId: dto.createdByUserId,
-      },
+        createdByUserId: dto.createdByUserId
+      });
+
+      const createdActivity = await prisma.stockActivity.create({
+        data: {
+          type: dto.type as any,
+          skuId: dto.skuId,
+          lotId: dto.lotId,
+          locationId: dto.locationId,
+          destinationLocationId: dto.destinationLocationId,
+          reservationId: dto.reservationId,
+          quantity: dto.quantity,
+          assignedUserId,
+          createdByUserId: dto.createdByUserId,
+        },
+      });
+
+      console.log('Activity created successfully:', createdActivity.id);
+
+      const trace = await prisma.activityTrace.create({
+        data: {
+          activityId: createdActivity.id,
+          status: 'CREATED',
+          source: 'API',
+          message: 'Atividade criada no sistema.',
+          userId: dto.createdByUserId,
+        },
+      });
+
+      console.log('Trace CREATED created successfully:', trace.id);
+
+      return createdActivity;
     });
 
     return activity;
@@ -350,7 +499,7 @@ export class StockService {
   async listActivities(status?: string, assignedUserId?: string) {
     return this.prisma.stockActivity.findMany({
       where: {
-        status: status as any,
+        ...(status && { status: status as any }),
         assignedUserId: assignedUserId || undefined,
       },
       include: {
@@ -403,6 +552,25 @@ export class StockService {
       data: {
         destinationLocationId,
         status: activity.status === 'PENDING' ? 'IN_PROGRESS' : activity.status,
+      },
+    });
+
+    await this.prisma.activityTrace.create({
+      data: {
+        activityId: updated.id,
+        status: 'ASSIGNED',
+        source: 'API',
+        message: 'Atividade assumida pelo operador.',
+        userId: activity.assignedUserId,
+      },
+    });
+
+    await this.prisma.activityTrace.create({
+      data: {
+        activityId: updated.id,
+        status: 'QUEUED',
+        source: 'API',
+        message: payload?.reason ? `Atividade enviada para processamento. Motivo: ${payload.reason}` : 'Atividade enviada para a fila de processamento.',
       },
     });
 
@@ -464,5 +632,47 @@ export class StockService {
     }
 
     return selected.userId;
+  }
+
+  async getActivityTraces(activityId: string) {
+    return this.prisma.activityTrace.findMany({
+      where: { activityId },
+      orderBy: { timestamp: 'asc' },
+    });
+  }
+
+  async cancelActivity(id: string, dto: CancelStockActivityDto, userId?: string) {
+    const activity = await this.prisma.stockActivity.findUnique({
+      where: { id },
+    });
+
+    if (!activity) {
+      throw new Error('Atividade não encontrada');
+    }
+
+    if (activity.status === 'FINALIZED') {
+      throw new Error('Atividade já finalizada não pode ser cancelada');
+    }
+
+    const updated = await this.prisma.$transaction(async (prisma) => {
+      await prisma.stockActivity.update({
+        where: { id },
+        data: { status: 'CANCELLED' as any },
+      });
+
+      await prisma.activityTrace.create({
+        data: {
+          activityId: id,
+          status: 'CANCELLED',
+          source: 'API',
+          message: `Atividade cancelada. Motivo: ${dto.reason || 'Não informado'}`,
+          userId: userId || activity.assignedUserId,
+        },
+      });
+
+      return { id, status: 'CANCELLED' };
+    });
+
+    return updated;
   }
 }

@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Param, Patch, Delete, Query, HttpCode, HttpStatus, NotFoundException as HttpNotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, HttpCode, HttpStatus, NotFoundException, BadRequestException, UseGuards, Req, Query } from '@nestjs/common';
 import { StockService } from '../services/stock.service';
 import { CreateSkuDto } from '../dto/create-sku.dto';
 import { StockMovementDto } from '../dto/stock-movement.dto';
@@ -8,12 +8,11 @@ import { CreateStockLotDto } from '../dto/create-stock-lot.dto';
 import { UpdateStockLotDto } from '../dto/update-stock-lot.dto';
 import { CreateStockReservationDto } from '../dto/create-stock-reservation.dto';
 import { UpdateStockReservationDto } from '../dto/update-stock-reservation.dto';
-import { CreateStockActivityDto } from '../dto/create-stock-activity.dto';
-import { UpdateStockActivityDto } from '../dto/update-stock-activity.dto';
-import { AssignStockActivityDto } from '../dto/assign-stock-activity.dto';
-import { CompleteStockActivityDto } from '../dto/complete-stock-activity.dto';
+import { CreateStockActivityDto, UpdateStockActivityDto, AssignStockActivityDto, CompleteStockActivityDto, CancelStockActivityDto } from '../dto';
 import { CreateActiveOperatorDto } from '../dto/create-active-operator.dto';
 import { UpdateActiveOperatorDto } from '../dto/update-active-operator.dto';
+import { AuthGuard } from '../../auth/guards/auth.guard';
+import { AuthenticatedRequest } from '../../auth/interfaces/auth.interface';
 
 @Controller('skus')
 export class StockController {
@@ -30,7 +29,7 @@ export class StockController {
     try {
       return await this.stockService.getSkuByCode(code);
     } catch (error) {
-      if (error instanceof HttpNotFoundException) {
+      if (error instanceof NotFoundException) {
         throw error;
       }
       throw error;
@@ -132,7 +131,10 @@ export class StockActivityController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() dto: CreateStockActivityDto) {
+  @UseGuards(AuthGuard)
+  create(@Body() dto: CreateStockActivityDto, @Req() req: AuthenticatedRequest) {
+    // Adicionar o userId do usuário autenticado
+    dto.createdByUserId = req.user.id;
     return this.stockService.createActivity(dto);
   }
 
@@ -142,6 +144,11 @@ export class StockActivityController {
     @Query('assignedUserId') assignedUserId?: string,
   ) {
     return this.stockService.listActivities(status, assignedUserId);
+  }
+
+  @Get(':id/traces')
+  findTraces(@Param('id') id: string) {
+    return this.stockService.getActivityTraces(id);
   }
 
   @Patch(':id')
@@ -157,6 +164,12 @@ export class StockActivityController {
   @Patch(':id/complete')
   complete(@Param('id') id: string, @Body() dto: CompleteStockActivityDto) {
     return this.stockService.completeActivity(id, dto);
+  }
+
+  @Patch(':id/cancel')
+  @UseGuards(AuthGuard)
+  cancel(@Param('id') id: string, @Body() dto: CancelStockActivityDto, @Req() req: AuthenticatedRequest) {
+    return this.stockService.cancelActivity(id, dto, req.user.id);
   }
 }
 
@@ -208,6 +221,22 @@ export class StockMovementController {
     });
   }
 
+  @Get('locations/available')
+  async getAvailableLocations(@Query('skuId') skuId?: string) {
+    return this.stockService.getAvailableLocations(skuId);
+  }
+
+  @Get('lots/available')
+  async getAvailableLots(@Query('skuId') skuId: string, @Query('locationId') locationId?: string) {
+    return this.stockService.getAvailableLots(skuId, locationId);
+  }
+
+  @Get('balance/available')
+  async getAvailableBalance(@Query('skuId') skuId: string, @Query('locationId') locationId?: string) {
+    const available = await this.stockService.getAvailableStock(skuId, locationId);
+    return { skuId, locationId, available };
+  }
+
   @Post('transfer')
   @HttpCode(HttpStatus.CREATED)
   async stockTransfer(@Body() stockMovementDto: StockMovementDto) {
@@ -227,7 +256,7 @@ export class StockMovementController {
     try {
       return await this.stockService.getStockBalance(skuCode);
     } catch (error) {
-      if (error instanceof HttpNotFoundException) {
+      if (error instanceof NotFoundException) {
         throw error;
       }
       throw error;

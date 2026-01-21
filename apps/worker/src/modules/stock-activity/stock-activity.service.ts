@@ -104,9 +104,35 @@ export class StockActivityConsumerService implements OnModuleInit, OnModuleDestr
 
         try {
           const payload = JSON.parse(msg.content.toString()) as ActivityPayload;
+
+          const activity = await this.prisma.stockActivity.findUnique({
+            where: { id: payload.activityId },
+            include: { assignedUser: true },
+          });
+
+          await this.prisma.activityTrace.create({
+            data: {
+              activityId: payload.activityId || '',
+              status: 'PROCESSING',
+              source: 'WORKER',
+              message: 'Atividade recebida para processamento.',
+              userId: activity?.assignedUserId,
+            },
+          });
+
           await this.processActivity(payload);
           this.channel?.ack(msg);
-        } catch (error) {
+        } catch (error: any) {
+          const payload = JSON.parse(msg.content.toString()) as ActivityPayload;
+          await this.prisma.activityTrace.create({
+            data: {
+              activityId: payload.activityId || '',
+              status: 'ERROR',
+              source: 'WORKER',
+              message: `Falha no processamento: ${error.message}`,
+            },
+          });
+
           console.error('Failed to process stock activity', error);
           this.channel?.nack(msg, false, false);
         }
@@ -122,10 +148,23 @@ export class StockActivityConsumerService implements OnModuleInit, OnModuleDestr
 
     const activity = await this.prisma.stockActivity.findUnique({
       where: { id: payload.activityId },
-      include: { lot: true, reservation: true },
+      include: { lot: true, reservation: true, assignedUser: true },
     });
 
     if (!activity || activity.status === 'FINALIZED') {
+      return;
+    }
+
+    if (activity.status === 'CANCELLED' as any) {
+      await this.prisma.activityTrace.create({
+        data: {
+          activityId: activity.id,
+          status: 'CANCELLED',
+          source: 'WORKER',
+          message: 'Atividade cancelada durante o processamento.',
+          userId: activity.assignedUserId,
+        },
+      });
       return;
     }
 
@@ -190,9 +229,21 @@ export class StockActivityConsumerService implements OnModuleInit, OnModuleDestr
       });
     }
 
-    await this.prisma.stockActivity.update({
-      where: { id: activity.id },
-      data: { status: 'FINALIZED', completedAt: new Date() },
+    await this.prisma.$transaction(async (prisma) => {
+      await prisma.stockActivity.update({
+        where: { id: activity.id },
+        data: { status: 'FINALIZED', completedAt: new Date() },
+      });
+
+      await prisma.activityTrace.create({
+        data: {
+          activityId: activity.id,
+          status: 'FINALIZED',
+          source: 'WORKER',
+          message: 'Atividade finalizada e estoque atualizado com sucesso.',
+          userId: activity.assignedUserId,
+        },
+      });
     });
   }
 

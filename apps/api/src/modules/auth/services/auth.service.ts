@@ -7,6 +7,19 @@ import * as bcrypt from 'bcrypt';
 export class AuthService {
   constructor(private prisma: PrismaService) {}
 
+  async findUserById(id: string) {
+    return (this.prisma as any).user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        username: true,
+      },
+    });
+  }
+
   async login(loginDto: LoginDto, ip?: string, userAgent?: string): Promise<AuthResponseDto> {
     console.log('AuthService.login called for:', loginDto.email);
     const { email, password } = loginDto;
