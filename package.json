@@ -5,10 +5,11 @@
   "private": true,
   "workspaces": [
     "apps/api",
-    "apps/worker"
+    "apps/worker",
+    "apps/web"
   ],
   "scripts": {
-    "dev": "concurrently \"pnpm --filter api dev\" \"pnpm --filter worker dev\"",
+    "dev": "concurrently \"pnpm --filter api start:dev\" \"pnpm --filter worker start:dev\" \"pnpm --filter web dev\"",
     "build": "pnpm -r build",
     "start": "concurrently \"pnpm --filter api start\" \"pnpm --filter worker start\"",
     "lint": "eslint . --ext .js,.ts,.tsx",

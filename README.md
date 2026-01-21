@@ -42,300 +42,149 @@ curl http://localhost:3000/health
 curl http://localhost/api/health
 ```
 
-## 📁 Project Structure
+## 📁 Estrutura do projeto
 
 ```
 logistics-ops-lab/
 ├── apps/
-│   ├── api/                 # Main HTTP API service
-│   │   ├── src/
-│   │   │   └── modules/
-│   │   │       └── health/
-│   │   │           ├── controllers/
-│   │   │           ├── services/
-│   │   │           └── dto/
-│   │   └── package.json
-│   └── worker/              # Background processing service
-│       ├── src/
-│       │   └── modules/
-│       │       └── health/
-│       │           ├── controllers/
-│       │           ├── services/
-│       │           └── dto/
-│       └── package.json
+│   ├── api/                 # API principal (NestJS, Prisma)
+│   ├── worker/              # Worker para tarefas em background (NestJS, RabbitMQ)
+│   └── web/                 # Painel de controle (React, Vite)
+├── docs/                    # Documentação adicional do projeto
 ├── infra/
-│   ├── docker/
-│   │   ├── api/Dockerfile
-│   │   └── worker/Dockerfile
-│   └── nginx/
-│       └── nginx.conf
-├── docker-compose.yml
-├── .env.example
-├── package.json
-├── pnpm-workspace.yaml
-├── tsconfig.json
-├── .eslintrc.js
-├── .prettierrc
-└── README.md
+│   ├── docker/              # Dockerfiles para cada serviço
+│   └── nginx/               # Configuração do Nginx como proxy reverso
+├── specs/                   # Especificações e planejamento
+├── docker-compose.yml       # Orquestração da stack completa
+├── docker-compose.simple.yml  # Orquestração da stack mínima (API + DB)
+├── .env.example             # Exemplo de variáveis de ambiente
+├── pnpm-workspace.yaml      # Definição do monorepo pnpm
+└── package.json             # Scripts e dependências do root
 ```
 
-## 🔧 Development
+## 🧭 Arquitetura
 
-### Available Scripts
+- **API (NestJS)**: expõe endpoints REST, autenticação, estoque e cadastros
+- **Worker (NestJS)**: processa atividades de estoque via RabbitMQ (`stock.activities`)
+- **Web (React)**: painel operacional consumindo `/api`
 
-From the repository root:
+Fluxo principal: API → RabbitMQ → Worker → atividades/rastreabilidade.
+
+## 🔗 Acessos úteis (stack completa)
+
+- **Web**: http://localhost
+- **API**: http://localhost/api
+- **Health**: http://localhost/api/health
+- **Swagger (API direta)**: http://localhost:3000/api
+- **RabbitMQ UI**: http://localhost:15672 (logistics_user / logistics_password)
+- **pgAdmin**: http://localhost:5050 (admin@logistics.com / admin123)
+
+> Observação: a API também fica disponível diretamente em http://localhost:3000.
+
+## 🧪 Desenvolvimento local
+
+Após instalar as dependências com `pnpm install`, você pode rodar todos os serviços simultaneamente:
 
 ```bash
-# Install dependencies
-pnpm install
-
-# Start all services
-pnpm docker:up
-
-# Stop all services
-pnpm docker:down
-
-# View logs
-pnpm docker:logs
-
-# Build all applications
-pnpm build
-
-# Run linting
-pnpm lint
-
-# Fix linting issues
-pnpm lint:fix
-
-# Check code formatting
-pnpm format:check
-
-# Fix code formatting
-pnpm format
-
-# Type checking
-pnpm type-check
+# Inicia api, worker e web em modo de desenvolvimento
+pnpm dev
 ```
 
-From individual applications:
+Se preferir, pode rodar cada serviço em um terminal separado:
 
 ```bash
-# API development
+# Terminal 1: API
+pnpm --filter api start:dev
+
+# Terminal 2: Worker
+pnpm --filter worker start:dev
+
+# Terminal 3: Web
+pnpm --filter web dev
+```
+
+> **Observação**: A configuração do Vite já inclui um proxy para que as chamadas do frontend para `/api` sejam redirecionadas para o servidor da API na porta 3000.
+
+## 🗄️ Banco e seed
+
+```bash
 cd apps/api
-pnpm start:dev
-
-# Worker development
-cd apps/worker  
-pnpm start:dev
+pnpm db:generate
+pnpm db:migrate
+pnpm db:seed
 ```
 
-## 🌐 API Endpoints
+Usuários de demonstração são criados no seed (consulte `apps/api/prisma/seed.ts` ou a tela de login do web).
 
-### Health Check
+## 🌐 Endpoints principais
 
-- **GET** `/health`
-  - Returns service health status
-  - Response: 200 (healthy) or 503 (unhealthy)
-  - Example response:
-    ```json
-    {
-      "status": "ok",
-      "timestamp": "2026-01-15T16:50:00.000Z",
-      "service": "logistics-ops-lab-api",
-      "version": "1.0.0"
-    }
-    ```
+Base da API:
+- Stack simples: `http://localhost:3000`
+- Stack completa: `http://localhost/api`
 
-### SKU Management
+Principais rotas:
+- `GET /health`
+- `POST /auth/login` · `GET /auth/me` · `GET /auth/permissions`
+- `GET/POST /products` · `GET/POST /skus`
+- `GET/POST /units` · `GET/POST /product-groups` · `GET/POST /storage-groups`
+- `GET/POST /stock/locations` · `GET /stock/lots`
+- `POST /stock/in` · `POST /stock/out` · `POST /stock/transfer`
+- `GET /stock/balances`
+- `GET /stock/activities` · `PATCH /stock/activities/:id/assign|complete|cancel`
+- `GET /stock/activities/:id/traces` · `GET /stock/operators`
 
-- **POST** `/skus`
-  - Create a new SKU
-  - Request body:
-    ```json
-    {
-      "code": "LAPTOP-001",
-      "description": "Laptop Dell Inspiron 15",
-      "unit": "EA"
-    }
-    ```
-  - Response: 201 (created) or 422 (validation error)
+## 🐳 Serviços Docker e portas
 
-- **GET** `/skus/:code`
-  - Get SKU by code
-  - Response: 200 (found) or 404 (not found)
+- **PostgreSQL**: 5432
+- **Redis**: 6379
+- **RabbitMQ**: 5672 (AMQP) · 15672 (UI)
+- **API**: 3000
+- **Worker**: 3001 (exposto como 3002)
+- **Nginx**: 80
+- **pgAdmin**: 5050
 
-### Stock Management
+## ⚙️ Variáveis de ambiente
 
-- **POST** `/stock/in`
-  - Add stock to inventory
-  - Request body:
-    ```json
-    {
-      "skuCode": "LAPTOP-001",
-      "type": "IN",
-      "quantity": 10,
-      "reason": "Purchase order #123"
-    }
-    ```
-  - Response: 201 (created) or 422 (validation error)
-
-- **POST** `/stock/out`
-  - Remove stock from inventory
-  - Request body:
-    ```json
-    {
-      "skuCode": "LAPTOP-001", 
-      "type": "OUT",
-      "quantity": 5,
-      "reason": "Sale order #456"
-    }
-    ```
-  - Response: 201 (created) or 422 (insufficient stock)
-
-- **GET** `/stock/:skuCode`
-  - Get current stock balance
-  - Response: 200 (found) or 404 (not found)
-  - Example response:
-    ```json
-    {
-      "skuCode": "LAPTOP-001",
-      "description": "Laptop Dell Inspiron 15",
-      "unit": "EA",
-      "quantity": 45,
-      "updatedAt": "2026-01-15T16:50:00.000Z"
-    }
-    ```
-
-## 🐳 Docker Services
-
-The application includes these Docker services:
-
-- **PostgreSQL**: Port 5432
-- **Redis**: Port 6379  
-- **RabbitMQ**: Ports 5672 (AMQP) and 15672 (Management UI)
-- **API**: Port 3000 (internal), exposed via Nginx on port 80
-- **Worker**: Port 3001 (internal)
-- **Nginx**: Port 80 (reverse proxy)
-
-## 🔍 Environment Configuration
-
-Copy `.env.example` to `.env` and configure as needed:
+Copie `.env.example` para `.env`:
 
 ```bash
 cp .env.example .env
 ```
 
-Key environment variables:
+Principais variáveis:
 - `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD`
 - `REDIS_HOST`, `REDIS_PORT`
 - `RABBITMQ_HOST`, `RABBITMQ_PORT`, `RABBITMQ_USER`, `RABBITMQ_PASSWORD`, `RABBITMQ_VHOST`
 - `NODE_ENV`, `API_PORT`, `WORKER_PORT`
 - `LOG_LEVEL`, `LOG_FORMAT`
 
-## 📋 Code Quality
+## ✅ Qualidade de código
 
-This project uses:
-
-- **TypeScript**: Strict mode enabled
-- **ESLint**: Code linting and style enforcement
-- **Prettier**: Code formatting
-- **Pino**: Structured JSON logging
-
-Run code quality checks:
 ```bash
-pnpm lint          # Check linting
-pnpm format:check   # Check formatting
-pnpm type-check     # Verify TypeScript types
+pnpm lint
+pnpm format:check
+pnpm type-check
 ```
 
 ## 🐛 Troubleshooting
 
-### Common Issues
+- Verifique se as portas estão livres (80, 3000, 5432, 5672, 15672).
+- Consulte logs: `docker compose logs -f api` · `docker compose logs -f worker`.
+- Em Windows, confirme se o Docker Desktop está em execução.
 
-#### Docker Issues
-
-**Problem**: Docker not installed or not running
-```bash
-# Check Docker status
-docker --version
-
-# Start Docker daemon (Windows)
-Start-Service docker
-
-# Start Docker daemon (Linux/macOS)
-sudo systemctl start docker
-sudo systemctl enable docker
-```
-
-**Problem**: Port conflicts
-```bash
-# Check what's using ports
-netstat -tulpn | grep :80
-netstat -tulpn | grep :5432
-
-# Kill processes using ports
-sudo lsof -ti:80
-sudo lsof -ti:5432
-
-# Or change ports in docker-compose.yml
-```
-
-**Problem**: Insufficient Docker resources
-```bash
-# Check Docker resource usage
-docker stats
-
-# Increase Docker memory (if needed)
-# Add to docker-compose.yml
-services:
-  api:
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-```
-
-**Problem**: pnpm not available
-```bash
-# Install pnpm globally
-npm install -g pnpm
-
-# Use npm instead (temporary)
-npm install
-npm run build
-```
-
-### Application Issues
-
-**Problem**: Services fail to start
-```bash
-# Check service logs
-docker compose logs api
-docker compose logs worker
-docker compose logs postgres
-
-# Check service health
-docker compose ps
-
-# Restart specific service
-docker compose restart api
-```
-
-## 📚 Additional Resources
+## 📚 Recursos
 
 - [NestJS Documentation](https://docs.nestjs.com)
 - [TypeScript Handbook](https://www.typescriptlang.org/docs/)
 - [Docker Compose Reference](https://docs.docker.com/compose/)
 - [pnpm Workspace Guide](https://pnpm.io/workspaces/)
 
-## 🤝 Contributing
+## 🤝 Contribuindo
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/your-feature-name`
-3. Make your changes
-4. Follow the code quality standards
-5. Submit a pull request
+1. Faça um fork do repositório
+2. Crie sua branch: `git checkout -b feature/minha-feature`
+3. Abra o pull request com a descrição das mudanças
 
-## 📄 License
+## 📄 Licença
 
-This project is licensed under the MIT License.
+Este projeto está licenciado sob a MIT License.
