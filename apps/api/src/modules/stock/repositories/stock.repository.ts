@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { SKU, StockBalance } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 
 @Injectable()
@@ -14,25 +13,25 @@ export class StockRepository {
     brand?: string;
     color?: string;
     size?: string;
-  }): Promise<SKU> {
+  }) {
     return this.prisma.sKU.create({
       data,
     });
   }
 
-  async findSkuByCode(ean: string): Promise<SKU | null> {
+  async findSkuByCode(ean: string) {
     return this.prisma.sKU.findUnique({
       where: { ean },
     });
   }
 
-  async findSkuById(id: string): Promise<SKU | null> {
+  async findSkuById(id: string) {
     return this.prisma.sKU.findUnique({
       where: { id },
     });
   }
 
-  async createOrUpdateStockBalance(skuId: string, quantity: number): Promise<StockBalance> {
+  async createOrUpdateStockBalance(skuId: string, quantity: number) {
     return this.prisma.stockBalance.upsert({
       where: { skuId },
       update: { quantity },
@@ -40,7 +39,7 @@ export class StockRepository {
     });
   }
 
-  async getStockBalance(skuId: string): Promise<StockBalance | null> {
+  async getStockBalance(skuId: string) {
     return this.prisma.stockBalance.findUnique({
       where: { skuId },
     });

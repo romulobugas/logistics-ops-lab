@@ -11,9 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.HealthController = void 0;
 const common_1 = require("@nestjs/common");
-const swagger_1 = require("@nestjs/swagger");
 const health_service_1 = require("../services/health.service");
-const health_check_dto_1 = require("../dto/health-check.dto");
 let HealthController = class HealthController {
     healthService;
     constructor(healthService) {
@@ -26,8 +24,6 @@ let HealthController = class HealthController {
 exports.HealthController = HealthController;
 __decorate([
     (0, common_1.Get)(),
-    (0, swagger_1.ApiOperation)({ summary: 'Get health status' }),
-    (0, swagger_1.ApiResponse)({ status: 200, type: health_check_dto_1.HealthCheckDto }),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
