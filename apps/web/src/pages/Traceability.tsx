@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getStockActivities, getActivityTraces } from '../services/traceability';
+import { getStockActivities, getActivityTraces, getQueueStatus, getPendingActivities } from '../services/traceability';
 import '../styles/traceability.css';
 
 interface StockActivity {
@@ -17,7 +17,7 @@ interface StockActivity {
 interface ActivityTrace {
   id: string;
   timestamp: string;
-  status: string;
+  status: 'QUEUED' | 'PROCESSING' | 'FINALIZED' | 'ERROR' | 'CANCELLED';
   source: 'API' | 'WORKER';
   message: string;
   userId: string | null;
@@ -29,6 +29,26 @@ interface User {
   lastName?: string;
 }
 
+interface QueueStatus {
+  messageCount: number;
+  consumerCount: number;
+}
+
+interface PendingActivity {
+  id: string;
+  activityId: string;
+  status: string;
+  timestamp: string;
+  source: string;
+  message: string;
+  userId: string | null;
+  activity: StockActivity;
+  queueInfo: {
+    isStillInQueue: boolean;
+    totalMessagesInQueue: number;
+  };
+}
+
 const TraceabilityPage: React.FC = () => {
   const [activities, setActivities] = useState<StockActivity[]>([]);
   const [expandedActivities, setExpandedActivities] = useState<Set<string>>(new Set());
@@ -36,6 +56,9 @@ const TraceabilityPage: React.FC = () => {
   const [usersMap, setUsersMap] = useState<Record<string, User>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [queueStatus, setQueueStatus] = useState<QueueStatus | null>(null);
+  const [pendingActivities, setPendingActivities] = useState<PendingActivity[]>([]);
+  const [showQueueInfo, setShowQueueInfo] = useState(false);
 
   const fetchUsers = async (userIds: string[]) => {
     const uniqueIds = Array.from(new Set(userIds));
@@ -60,8 +83,14 @@ const TraceabilityPage: React.FC = () => {
     const fetchActivities = async () => {
       try {
         setLoading(true);
-        const data = await getStockActivities();
+        const [data, queue, pending] = await Promise.all([
+          getStockActivities(),
+          getQueueStatus(),
+          getPendingActivities(),
+        ]);
         setActivities(data);
+        setQueueStatus(queue);
+        setPendingActivities(pending);
         setError(null);
       } catch (err) {
         setError('Falha ao carregar atividades.');
@@ -133,6 +162,48 @@ const TraceabilityPage: React.FC = () => {
         <h1>Rastreabilidade de Atividades</h1>
         <p>Clique em uma atividade para expandir e ver o ciclo de vida completo.</p>
       </header>
+
+      {/* Queue Status Section */}
+      <div className="queue-status-section">
+        <div className="queue-header" onClick={() => setShowQueueInfo(!showQueueInfo)}>
+          <h3>Status da Fila RabbitMQ</h3>
+          <span className="queue-toggle">{showQueueInfo ? '▼' : '▶'}</span>
+        </div>
+        
+        {showQueueInfo && queueStatus && (
+          <div className="queue-info">
+            <div className="queue-stats">
+              <div className="queue-stat">
+                <span className="stat-label">Mensagens na Fila:</span>
+                <span className="stat-value">{queueStatus.messageCount}</span>
+              </div>
+              <div className="queue-stat">
+                <span className="stat-label">Consumidores Ativos:</span>
+                <span className="stat-value">{queueStatus.consumerCount}</span>
+              </div>
+            </div>
+            
+            {pendingActivities.length > 0 && (
+              <div className="pending-activities">
+                <h4>Atividades Pendentes na Fila</h4>
+                <div className="pending-list">
+                  {pendingActivities.map((pending) => (
+                    <div key={pending.id} className="pending-item">
+                      <span className="pending-activity-id">#{pending.activityId.slice(0, 8)}</span>
+                      <span className="pending-sku">{pending.activity.sku.ean}</span>
+                      <span className="pending-type">{pending.activity.type}</span>
+                      <span className="pending-time">
+                        {new Date(pending.timestamp).toLocaleString()}
+                      </span>
+                      <span className="pending-badge">Na Fila</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {error && <p className="error-message">{error}</p>}
       {loading && <p>Carregando...</p>}

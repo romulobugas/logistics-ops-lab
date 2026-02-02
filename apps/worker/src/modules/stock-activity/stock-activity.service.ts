@@ -1,6 +1,6 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { connect } from 'amqplib';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 
 type AmqpConnection = any;
 type AmqpChannel = any;
@@ -229,7 +229,7 @@ export class StockActivityConsumerService implements OnModuleInit, OnModuleDestr
       });
     }
 
-    await this.prisma.$transaction(async (prisma) => {
+    await this.prisma.$transaction(async (prisma: Prisma.TransactionClient) => {
       await prisma.stockActivity.update({
         where: { id: activity.id },
         data: { status: 'FINALIZED', completedAt: new Date() },

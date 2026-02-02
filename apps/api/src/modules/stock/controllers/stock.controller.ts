@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, HttpCode, HttpStatus, NotFoundException, BadRequestException, UseGuards, Req, Query } from '@nestjs/common';
 import { StockService } from '../services/stock.service';
+import { RabbitMQManagementService, QueueMessage } from '../services/rabbitmq-management.service';
 import { CreateSkuDto } from '../dto/create-sku.dto';
 import { StockMovementDto } from '../dto/stock-movement.dto';
 import { CreateStockLocationDto } from '../dto/create-stock-location.dto';
@@ -127,7 +128,10 @@ export class StockReservationController {
 
 @Controller('stock/activities')
 export class StockActivityController {
-  constructor(private readonly stockService: StockService) {}
+  constructor(
+    private readonly stockService: StockService,
+    private readonly rabbitMQService: RabbitMQManagementService,
+  ) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -170,6 +174,16 @@ export class StockActivityController {
   @UseGuards(AuthGuard)
   cancel(@Param('id') id: string, @Body() dto: CancelStockActivityDto, @Req() req: AuthenticatedRequest) {
     return this.stockService.cancelActivity(id, dto, req.user.id);
+  }
+
+  @Get('queue/status')
+  async getQueueStatus(): Promise<QueueMessage> {
+    return this.rabbitMQService.getQueueStatus();
+  }
+
+  @Get('queue/pending')
+  async getPendingActivities() {
+    return this.rabbitMQService.getPendingActivities();
   }
 }
 

@@ -13,6 +13,34 @@ import { CreateStockActivityDto, UpdateStockActivityDto, AssignStockActivityDto,
 import { CreateActiveOperatorDto } from '../dto/create-active-operator.dto';
 import { UpdateActiveOperatorDto } from '../dto/update-active-operator.dto';
 import { StockQueueService } from './stock-queue.service';
+import { Prisma } from '@prisma/client';
+
+type ActivityLocationSnapshot = {
+  locationId: string | null;
+  destinationLocationId: string | null;
+};
+
+type ActivityReservationSnapshot = {
+  type: string;
+  quantity: number;
+  locationId: string | null;
+  destinationLocationId: string | null;
+};
+
+type LocationSnapshot = { id: string };
+
+type LotWithRelations = {
+  id: string;
+  skuId: string;
+  locationId: string | null;
+  quantity: number;
+  lotCode?: string | null;
+  expiryDate?: Date | null;
+  reservedQuantity?: number;
+  location?: Record<string, unknown> | null;
+  sku?: Record<string, unknown> | null;
+  [key: string]: unknown;
+};
 
 @Injectable()
 export class StockService {
@@ -162,15 +190,15 @@ export class StockService {
         locationId: true,
         destinationLocationId: true,
       },
-    });
+    }) as ActivityLocationSnapshot[];
 
     const blockedLocationIds = new Set<string>();
-    activeActivities.forEach(activity => {
+    for (const activity of activeActivities) {
       if (activity.locationId) blockedLocationIds.add(activity.locationId);
       if (activity.destinationLocationId) blockedLocationIds.add(activity.destinationLocationId);
-    });
+    }
 
-    return locations.filter(location => !blockedLocationIds.has(location.id));
+    return locations.filter((location: LocationSnapshot) => !blockedLocationIds.has(location.id));
   }
 
   async getAvailableLots(skuId: string, locationId?: string) {
@@ -187,12 +215,12 @@ export class StockService {
         { expiryDate: 'asc' },
         { createdAt: 'asc' },
       ],
-    });
+    }) as LotWithRelations[];
 
     // Calculate available quantity for each lot
     const lotsWithAvailability = await Promise.all(
-      lots.map(async (lot) => {
-        const available = await this.getAvailableStock(skuId, lot.locationId);
+      lots.map(async (lot: LotWithRelations) => {
+        const available = await this.getAvailableStock(skuId, lot.locationId ?? undefined);
         return {
           ...lot,
           availableQuantity: Math.min(lot.quantity, available),
@@ -225,14 +253,14 @@ export class StockService {
           ],
         }),
       },
-    });
+    }) as ActivityReservationSnapshot[];
 
-    const reservedQuantity = activeActivities.reduce((total, activity) => {
+    let reservedQuantity = 0;
+    for (const activity of activeActivities) {
       if (activity.type === 'OUT' || activity.type === 'TRANSFER') {
-        return total + activity.quantity;
+        reservedQuantity += activity.quantity;
       }
-      return total;
-    }, 0);
+    }
 
     return Math.max(0, currentBalance - reservedQuantity);
   }
@@ -247,7 +275,7 @@ export class StockService {
       }
     }
 
-    const activity = await this.prisma.$transaction(async (prisma) => {
+    const activity = await this.prisma.$transaction(async (prisma: Prisma.TransactionClient) => {
       console.log('Creating activity via requestStockMovement:', {
         type: stockMovementDto.type,
         skuId: sku.id,
@@ -455,7 +483,7 @@ export class StockService {
   async createActivity(dto: CreateStockActivityDto) {
     const assignedUserId = dto.assignedUserId || (await this.pickActiveOperator());
 
-    const activity = await this.prisma.$transaction(async (prisma) => {
+    const activity = await this.prisma.$transaction(async (prisma: Prisma.TransactionClient) => {
       console.log('Creating activity with data:', {
         type: dto.type,
         skuId: dto.skuId,
@@ -583,6 +611,7 @@ export class StockService {
       destinationLocationId: updated.destinationLocationId,
       quantity: updated.quantity,
       reservationId: updated.reservationId,
+      assignedUserId: updated.assignedUserId,
       reason: payload?.reason || 'Movimentação confirmada',
     });
 
@@ -654,7 +683,7 @@ export class StockService {
       throw new Error('Atividade já finalizada não pode ser cancelada');
     }
 
-    const updated = await this.prisma.$transaction(async (prisma) => {
+    const updated = await this.prisma.$transaction(async (prisma: Prisma.TransactionClient) => {
       await prisma.stockActivity.update({
         where: { id },
         data: { status: 'CANCELLED' as any },

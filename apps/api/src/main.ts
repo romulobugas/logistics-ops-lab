@@ -24,6 +24,8 @@ async function bootstrap() {
     logger: new Logger(),
   });
 
+  app.setGlobalPrefix('api');
+
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
     forbidNonWhitelisted: true,

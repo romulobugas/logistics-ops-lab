@@ -1,5 +1,6 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { connect } from 'amqplib';
+import { PrismaService } from '../../../prisma/prisma.service';
 
 type AmqpConnection = any;
 type AmqpChannel = any;
@@ -9,6 +10,8 @@ export class StockQueueService implements OnModuleInit, OnModuleDestroy {
   private connection: AmqpConnection | null = null;
   private channel: AmqpChannel | null = null;
   private readonly queueName = 'stock.activities';
+
+  constructor(private readonly prisma: PrismaService) {}
 
   async onModuleInit() {
     await this.connect();
@@ -39,6 +42,23 @@ export class StockQueueService implements OnModuleInit, OnModuleDestroy {
     await this.connect();
     if (!this.channel) {
       return;
+    }
+
+    // Criar trace no banco antes de enviar para a fila
+    if (payload.activityId) {
+      try {
+        await this.prisma.activityTrace.create({
+          data: {
+            activityId: payload.activityId as string,
+            status: 'QUEUED',
+            source: 'API',
+            message: 'Atividade enfileirada no RabbitMQ para processamento.',
+            userId: payload.assignedUserId as string | null || null,
+          },
+        });
+      } catch (error) {
+        console.error('Failed to create queued trace:', error);
+      }
     }
 
     this.channel.sendToQueue(this.queueName, Buffer.from(JSON.stringify(payload)), {

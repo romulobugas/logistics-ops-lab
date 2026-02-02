@@ -27,3 +27,23 @@ export const getActivityTraces = async (activityId: string) => {
   }
   return response.json();
 };
+
+export const getQueueStatus = async () => {
+  const response = await fetch(`${API_URL}/stock/activities/queue/status`, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to fetch queue status');
+  }
+  return response.json();
+};
+
+export const getPendingActivities = async () => {
+  const response = await fetch(`${API_URL}/stock/activities/queue/pending`, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to fetch pending activities');
+  }
+  return response.json();
+};
