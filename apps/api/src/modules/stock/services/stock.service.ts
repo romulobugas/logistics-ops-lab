@@ -42,6 +42,8 @@ type LotWithRelations = {
   [key: string]: unknown;
 };
 
+type LotWithAvailability = LotWithRelations & { reservedQuantity: number; availableQuantity: number };
+
 @Injectable()
 export class StockService {
   constructor(
@@ -217,18 +219,8 @@ export class StockService {
       ],
     }) as LotWithRelations[];
 
-    // Calculate available quantity for each lot
-    const lotsWithAvailability = await Promise.all(
-      lots.map(async (lot: LotWithRelations) => {
-        const available = await this.getAvailableStock(skuId, lot.locationId ?? undefined);
-        return {
-          ...lot,
-          availableQuantity: Math.min(lot.quantity, available),
-        };
-      })
-    );
-
-    return lotsWithAvailability.filter(lot => lot.availableQuantity > 0);
+    const lotsWithAvailability = await this.decorateLotsWithAvailability(lots);
+    return lotsWithAvailability.filter((lot) => lot.availableQuantity > 0);
   }
 
   async getAvailableStock(skuId: string, locationId?: string): Promise<number> {
@@ -273,6 +265,10 @@ export class StockService {
       if (!stockMovementDto.lotId || !stockMovementDto.destinationLocationId) {
         throw new BadRequestException('Transferência exige lote e localização de destino');
       }
+    }
+
+    if ((stockMovementDto.type === 'OUT' || stockMovementDto.type === 'TRANSFER') && stockMovementDto.lotId) {
+      await this.ensureLotHasAvailableQuantity(stockMovementDto.lotId, stockMovementDto.quantity);
     }
 
     const activity = await this.prisma.$transaction(async (prisma: Prisma.TransactionClient) => {
@@ -377,7 +373,7 @@ export class StockService {
   }
 
   async listLots(skuId?: string, locationId?: string) {
-    return this.prisma.stockLot.findMany({
+    const lots = await this.prisma.stockLot.findMany({
       where: {
         skuId: skuId || undefined,
         locationId: locationId || undefined,
@@ -385,6 +381,7 @@ export class StockService {
       include: { location: true, sku: true },
       orderBy: { createdAt: 'desc' },
     });
+    return this.decorateLotsWithAvailability(lots as LotWithRelations[]);
   }
 
   async getLot(id: string) {
@@ -548,12 +545,31 @@ export class StockService {
 
   async assignActivity(id: string, dto: AssignStockActivityDto) {
     const assignedUserId = dto.userId || (await this.pickActiveOperator());
-    return this.prisma.stockActivity.update({
-      where: { id },
-      data: {
-        assignedUserId,
-        status: 'IN_PROGRESS',
-      },
+    return this.prisma.$transaction(async (prisma: Prisma.TransactionClient) => {
+      const activity = await prisma.stockActivity.findUnique({ where: { id } });
+      if (!activity) {
+        throw new NotFoundException('Atividade não encontrada');
+      }
+
+      const updated = await prisma.stockActivity.update({
+        where: { id },
+        data: {
+          assignedUserId,
+          status: 'IN_PROGRESS',
+        },
+      });
+
+      await prisma.activityTrace.create({
+        data: {
+          activityId: updated.id,
+          status: 'ASSIGNED',
+          source: 'API',
+          message: 'Atividade assumida pelo operador.',
+          userId: assignedUserId || null,
+        },
+      });
+
+      return updated;
     });
   }
 
@@ -575,6 +591,8 @@ export class StockService {
       throw new BadRequestException('Transferência exige localização de destino');
     }
 
+    const needsAssignTrace = activity.status === 'PENDING';
+
     const updated = await this.prisma.stockActivity.update({
       where: { id },
       data: {
@@ -583,15 +601,17 @@ export class StockService {
       },
     });
 
-    await this.prisma.activityTrace.create({
-      data: {
-        activityId: updated.id,
-        status: 'ASSIGNED',
-        source: 'API',
-        message: 'Atividade assumida pelo operador.',
-        userId: activity.assignedUserId,
-      },
-    });
+    if (needsAssignTrace) {
+      await this.prisma.activityTrace.create({
+        data: {
+          activityId: updated.id,
+          status: 'ASSIGNED',
+          source: 'API',
+          message: 'Atividade assumida pelo operador.',
+          userId: updated.assignedUserId,
+        },
+      });
+    }
 
     await this.prisma.activityTrace.create({
       data: {
@@ -703,5 +723,67 @@ export class StockService {
     });
 
     return updated;
+  }
+
+  private async getReservedQuantitiesByLot(lotIds: string[]) {
+    if (!lotIds.length) {
+      return new Map<string, number>();
+    }
+
+    const activities = await this.prisma.stockActivity.findMany({
+      where: {
+        lotId: { in: lotIds },
+        status: { in: ['PENDING', 'IN_PROGRESS'] as any },
+        type: { in: ['OUT', 'TRANSFER'] as any },
+      },
+      select: {
+        lotId: true,
+        quantity: true,
+      },
+    });
+
+    const map = new Map<string, number>();
+    for (const activity of activities) {
+      if (!activity.lotId) {
+        continue;
+      }
+      const current = map.get(activity.lotId) ?? 0;
+      map.set(activity.lotId, current + activity.quantity);
+    }
+    return map;
+  }
+
+  private async decorateLotsWithAvailability(lots: LotWithRelations[]): Promise<LotWithAvailability[]> {
+    if (!lots.length) {
+      return [];
+    }
+
+    const reservationsMap = await this.getReservedQuantitiesByLot(lots.map((lot) => lot.id));
+    return lots.map((lot) => {
+      const reservedQuantity = reservationsMap.get(lot.id) ?? 0;
+      const availableQuantity = Math.max(0, lot.quantity - reservedQuantity);
+      return {
+        ...lot,
+        reservedQuantity,
+        availableQuantity,
+      };
+    });
+  }
+
+  private async ensureLotHasAvailableQuantity(lotId: string, requestedQuantity: number) {
+    const lot = await this.prisma.stockLot.findUnique({ where: { id: lotId } });
+    if (!lot) {
+      throw new NotFoundException('Lote não encontrado');
+    }
+
+    const reservationsMap = await this.getReservedQuantitiesByLot([lotId]);
+    const reservedQuantity = reservationsMap.get(lotId) ?? 0;
+    const availableQuantity = Math.max(0, lot.quantity - reservedQuantity);
+
+    if (requestedQuantity > availableQuantity) {
+      throw new BadRequestException(
+        `Quantidade indisponível no lote. Disponível considerando reservas: ${availableQuantity}`,
+      );
+    }
   }
 }

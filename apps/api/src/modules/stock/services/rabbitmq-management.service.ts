@@ -63,36 +63,65 @@ export class RabbitMQManagementService implements OnModuleInit, OnModuleDestroy 
       throw new Error('Failed to connect to RabbitMQ');
     }
 
-    // Obter atividades com status QUEUED que ainda não foram processadas
-    const queuedTraces = await this.prisma.activityTrace.findMany({
+    const queueStatus = await this.getQueueStatus();
+
+    const pendingActivities = await this.prisma.stockActivity.findMany({
       where: {
-        status: 'QUEUED',
-      },
-      include: {
-        activity: {
-          include: {
-            sku: true,
-            location: true,
-            destinationLocation: true,
-            assignedUser: true,
-          },
+        status: {
+          in: ['PENDING', 'IN_PROGRESS'] as any,
         },
       },
-      orderBy: {
-        timestamp: 'desc',
+      include: {
+        sku: true,
+        location: true,
+        destinationLocation: true,
+        assignedUser: true,
+        traces: {
+          orderBy: { timestamp: 'desc' },
+          take: 1,
+        },
       },
+      orderBy: { updatedAt: 'desc' },
     });
+    type PendingActivity = (typeof pendingActivities)[number];
 
-    // Verificar quais ainda estão pendentes comparando com a fila
-    const queueStatus = await this.getQueueStatus();
-    
-    return queuedTraces.map((trace: ActivityTraceEntry) => ({
-      ...trace,
-      queueInfo: {
-        isStillInQueue: true, // Se tem trace QUEUED, assume que está na fila
-        totalMessagesInQueue: queueStatus.messageCount,
-      },
-    }));
+    return pendingActivities
+      .map((activity: PendingActivity) => {
+        const { traces, ...activityInfo } = activity;
+        const latestTrace = traces[0] as ActivityTraceEntry | undefined;
+        const fallbackTrace: ActivityTraceEntry =
+          latestTrace ?? {
+            id: `pending-${activity.id}`,
+            activityId: activity.id,
+            status: activity.status,
+            source: 'API',
+            message: this.describePendingActivity(activity.status, activity.type),
+            timestamp: activity.updatedAt,
+            userId: activity.assignedUserId ?? null,
+          };
+        const isQueued = latestTrace?.status === 'QUEUED';
+
+        return {
+          ...fallbackTrace,
+          activity: activityInfo,
+          queueInfo: {
+            isStillInQueue: isQueued && queueStatus.messageCount > 0,
+            totalMessagesInQueue: queueStatus.messageCount,
+            stage: isQueued ? 'RMQ' : 'DB',
+          },
+        };
+      })
+      .filter(Boolean);
+  }
+
+  private describePendingActivity(status: string, type: string) {
+    if (status === 'PENDING') {
+      return 'Atividade aguardando operador para assumir a execução.';
+    }
+    if (status === 'IN_PROGRESS') {
+      return 'Atividade em andamento aguardando confirmação para envio à fila.';
+    }
+    return `Atividade ${status?.toLowerCase() || 'pendente'} (${type}).`;
   }
 
   async onModuleDestroy() {

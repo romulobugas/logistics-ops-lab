@@ -38,6 +38,8 @@ interface StockLot {
   lotCode?: string;
   expiryDate?: string;
   quantity: number;
+  reservedQuantity?: number;
+  availableQuantity?: number;
   locationId: string;
   location: StockLocation;
   sku: SKU;
@@ -61,6 +63,7 @@ const StockMovementPage = () => {
   const skuOptions = useMemo(() => products.flatMap((product) => product.skus), [products]);
   const selectedSku = useMemo(() => skuOptions.find((sku) => sku.id === selectedSkuId), [skuOptions, selectedSkuId]);
   const selectedLot = useMemo(() => lots.find((lot) => lot.id === selectedLotId), [lots, selectedLotId]);
+  const maxTransferable = selectedLot ? selectedLot.availableQuantity ?? selectedLot.quantity : 0;
 
   const fetchInitialData = async () => {
     try {
@@ -104,7 +107,7 @@ const StockMovementPage = () => {
 
   useEffect(() => {
     if (selectedLot) {
-      setQuantity(selectedLot.quantity);
+      setQuantity(Math.max(1, selectedLot.availableQuantity ?? selectedLot.quantity ?? 1));
     }
   }, [selectedLot]);
 
@@ -120,6 +123,11 @@ const StockMovementPage = () => {
 
     if (!destinationLocationId) {
       setError('Informe o endereço de destino.');
+      return;
+    }
+
+    if (selectedLot && quantity > maxTransferable) {
+      setError('Quantidade solicitada maior que o disponível considerando reservas pendentes.');
       return;
     }
 
@@ -208,11 +216,16 @@ const StockMovementPage = () => {
                 className="input"
                 type="number"
                 min={1}
-                max={selectedLot?.quantity ?? undefined}
+                max={maxTransferable || undefined}
                 value={quantity}
                 onChange={(event) => setQuantity(Number(event.target.value))}
                 required
               />
+              {selectedLot && (
+                <span className="muted">
+                  Disponível: {maxTransferable} • Reservado: {selectedLot.reservedQuantity ?? 0}
+                </span>
+              )}
             </div>
 
             <div className="field">
@@ -267,7 +280,9 @@ const StockMovementPage = () => {
                 <tr>
                   <th>Lote</th>
                   <th>Endereço</th>
-                  <th>Qtd.</th>
+                  <th>Qtd. Total</th>
+                  <th>Qtd. Reservada</th>
+                  <th>Qtd. Disponível</th>
                   <th>Ação</th>
                 </tr>
               </thead>
@@ -287,6 +302,8 @@ const StockMovementPage = () => {
                         {`${lot.location.street}-${lot.location.block}-${lot.location.level}-${lot.location.apartment}`}
                       </td>
                       <td>{lot.quantity}</td>
+                      <td>{lot.reservedQuantity ?? 0}</td>
+                      <td>{lot.availableQuantity ?? lot.quantity}</td>
                       <td>
                         <button
                           className="table-action"

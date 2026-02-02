@@ -14,11 +14,13 @@ interface StockActivity {
   createdByUser?: { id: string; firstName?: string; lastName?: string } | null;
 }
 
+type ActivitySource = 'API' | 'WORKER' | 'DB' | 'RMQ';
+
 interface ActivityTrace {
   id: string;
   timestamp: string;
   status: 'QUEUED' | 'PROCESSING' | 'FINALIZED' | 'ERROR' | 'CANCELLED';
-  source: 'API' | 'WORKER';
+  source: ActivitySource;
   message: string;
   userId: string | null;
 }
@@ -147,7 +149,15 @@ const TraceabilityPage: React.FC = () => {
     setExpandedActivities(set);
   };
 
-  const formatSource = (source: 'API' | 'WORKER') => source === 'API' ? 'DB' : 'RMQ';
+  const getSourceBadge = (source: ActivitySource) => {
+    if (source === 'API' || source === 'DB') {
+      return { label: 'DB', className: 'source-db' };
+    }
+    if (source === 'WORKER' || source === 'RMQ') {
+      return { label: 'RMQ', className: 'source-rmq' };
+    }
+    return { label: source, className: 'source-unknown' };
+  };
   const formatUserName = (userId: string | null) => {
     if (!userId) return 'Sistema';
     const user = usersMap[userId];
@@ -246,15 +256,22 @@ const TraceabilityPage: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {traces.map((trace) => (
-                          <tr key={trace.id}>
-                            <td>{new Date(trace.timestamp).toLocaleString()}</td>
-                            <td><span className={`status-badge status-${trace.status.toLowerCase()}`}>{trace.status}</span></td>
-                            <td><span className={`source-badge source-${trace.source.toLowerCase()}`}>{formatSource(trace.source)}</span></td>
-                            <td>{trace.message}</td>
-                            <td>{formatUserName(trace.userId)}</td>
-                          </tr>
-                        ))}
+                        {traces.map((trace) => {
+                          const sourceBadge = getSourceBadge(trace.source);
+                          return (
+                            <tr key={trace.id}>
+                              <td>{new Date(trace.timestamp).toLocaleString()}</td>
+                              <td><span className={`status-badge status-${trace.status.toLowerCase()}`}>{trace.status}</span></td>
+                              <td>
+                                <span className={`source-badge ${sourceBadge.className}`}>
+                                  {sourceBadge.label}
+                                </span>
+                              </td>
+                              <td>{trace.message}</td>
+                              <td>{formatUserName(trace.userId)}</td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   )}
